@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Referrals</title>
+    <link rel="stylesheet" href="" />
+  </head>
+
+  <body>
+    <nav>
+      <ul>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="user_management.html">User Management</a></li>
+        <li><a href="assessment_management.html">Assessment Management</a></li>
+        <li><a href="reports.html">Reports</a></li>
+        <li><a href="referrals.html">Referrals</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <header><h1>Referrals</h1></header>
+      <hr/>
+
+      <section class="">
+        <form>
+          <label for="r-search" class="">Search Referral</label>
+          <input
+            type="search"
+            id="r-search"
+            name="r-search"
+            placeholder="Search student"
+          />
+
+          <label for="r-status" class="">Referral Status</label>
+          <select id="r-status" name="r-status">
+            <option value="">All Status</option>
+            <option value="pending">Pending</option>
+            <option value="accepted">Accepted</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="completed">Completed</option>
+          </select>
+
+          <label for="r-counselor" class="">Assigned Counselor</label>
+          <select id="r-counselor" name="r-counselor">
+            <option value="">All Counselors</option>
+            <option>Counselor A</option>
+            <option>Counselor B</option>
+            <option>Counselor C</option>
+          </select>
+
+          <button type="submit">Filter</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Referral List</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Student Alias</th>
+              <th>Risk Level</th>
+              <th>Referral Status</th>
+              <th>Assigned Counselor</th>
+              <th>Referred At</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td>Tungtung</td>
+              <td>High</td>
+              <td>Pending</td>
+              <td>Not Assigned</td>
+              <td>May 12, 2025</td>
+            </tr>
+
+            <tr>
+              <td>Sahur</td>
+              <td>Moderate</td>
+              <td>Accepted</td>
+              <td>Dr. Maria Santos</td>
+              <td>May 13, 2025</td>
+            </tr>
+
+            <tr>
+              <td>Bombardiro</td>
+              <td>High</td>
+              <td>Completed</td>
+              <td>Dr. John Cruz</td>
+              <td>May 15, 2025</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <nav class="">
+        <ul>
+          <li><a href="#">&laquo;</a></li>
+          <li><a href="#">1</a></li>
+          <li><a href="#">2</a></li>
+          <li><a href="#">3</a></li>
+          <li><a href="#">4</a></li>
+          <li><a href="#">5</a></li>
+          <li><a href="#">&raquo;</a></li>
+        </ul>
+      </nav>
+    </main>
+  </body>
+</html>

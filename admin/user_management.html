@@ -1,0 +1,159 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>User Management</title>
+
+    <link rel="stylesheet" href="" />
+  </head>
+  <body>
+    <nav>
+      <ul>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="user_management.html">User Management</a></li>
+        <li><a href="assessment_management.html">Assessment Management</a></li>
+        <li><a href="reports.html">Reports</a></li>
+        <li><a href="referrals.html">Referrals</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <header>
+        <section>
+          <h1>User Management</h1>
+        </section>
+
+        <section>
+          <button type="button">Add User</button>
+        </section>
+      </header>
+
+      <section class="">
+        <form>
+          <label for="search-user">Search User</label>
+          <input
+            type="search"
+            id="search-user"
+            placeholder="Search by alias or email"
+          />
+
+          <label for="role">Role</label>
+          <select id="role">
+            <option>All Roles</option>
+            <option>Admin</option>
+            <option>Counselor</option>
+            <option>Student</option>
+          </select>
+
+          <label for="status">Status</label>
+          <select id="status">
+            <option>All Status</option>
+            <option>Active</option>
+            <option>Deactive</option>
+          </select>
+        </form>
+      </section>
+
+      <section>
+        <h2>Users</h2>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr>
+              <td>John Doe</td>
+              <td>john@example.com</td>
+              <td>Counselor</td>
+              <td>Active</td>
+              <td>
+                <button type="button">Edit</button>
+                <button type="button">Deactivate</button>
+              </td>
+            </tr>
+
+            <tr>
+              <td>Jane Smith</td>
+              <td>jane@example.com</td>
+              <td>Student</td>
+              <td>Deactive</td>
+              <td>
+                <button type="button">Edit</button>
+                <button type="button">Activate</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <dialog id="add-user-modal">
+      <form method="dialog">
+        <header>
+          <h2>Add User</h2>
+        </header>
+
+        <section>
+          <label for="fullname">Full Name</label>
+          <input type="text" id="fullname" />
+
+          <label for="email">Email</label>
+          <input type="email" id="email" />
+
+          <label for="password">Password</label>
+          <input type="password" id="password" />
+
+          <label for="user-role">Role</label>
+          <select id="user-role">
+            <option>Admin</option>
+            <option>Counselor</option>
+            <option>Student</option>
+          </select>
+        </section>
+
+        <footer>
+          <button type="submit">Save</button>
+          <button type="button">Cancel</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog id="edit-user-modal">
+      <form method="dialog">
+        <header>
+          <h2>Edit User</h2>
+        </header>
+
+        <section>
+          <label for="edit-name">Full Name</label>
+          <input type="text" id="edit-name" />
+
+          <label for="edit-email">Email</label>
+          <input type="email" id="edit-email" />
+
+          <label for="edit-role">Role</label>
+          <select id="edit-role">
+            <option>Admin</option>
+            <option>Counselor</option>
+            <option>Student</option>
+          </select>
+        </section>
+
+        <footer>
+          <button type="submit">Update</button>
+          <button type="button">Cancel</button>
+        </footer>
+      </form>
+    </dialog>
+  </body>
+</html>
