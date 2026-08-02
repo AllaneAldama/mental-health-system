@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Counselor Dashboard</title>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- ================= SIDEBAR ================= -->
+    <aside>
+
+        <h2>PTC Wellness</h2>
+
+        <hr>
+
+        <nav>
+
+            <ul>
+
+                <li><a href="dashboard.php">Dashboard</a></li>
+
+                <li><a href="assessment_queue.php">Assessments</a></li>
+
+                <li><a href="monitoring.php">Monitoring</a></li>
+
+                <li><a href="referral.php">Referrals</a></li>
+
+                <li><a href="assessment_history.php">Assessment History</a></li>
+
+                <li><a href="profile.php">Profile</a></li>
+
+            </ul>
+
+        </nav>
+
+        <hr>
+
+        <a href="../auth/logout.php">Logout</a>
+
+    </aside>
+
+    <!-- ================= MAIN CONTENT ================= -->
+
+    <main>
+
+        <!-- HEADER -->
+
+        <header>
+
+            <h1>Dashboard Overview</h1>
+
+            <p>Welcome back, Counselor!</p>
+
+        </header>
+
+        <hr>
+
+        <!-- SUMMARY CARDS -->
+
+        <section>
+
+            <table width="100%">
+
+                <tr>
+
+                    <td>
+
+                        <h3>Total Assessments</h3>
+
+                        <h1>123</h1>
+
+                    </td>
+
+                    <td>
+
+                        <h3>Pending Review</h3>
+
+                        <h1>14</h1>
+
+                    </td>
+
+                    <td>
+
+                        <h3>High Risk</h3>
+
+                        <h1>15</h1>
+
+                    </td>
+
+                    <td>
+
+                        <h3>Referred</h3>
+
+                        <h1>15</h1>
+
+                    </td>
+
+                </tr>
+
+            </table>
+
+        </section>
+
+        <br>
+
+        <!-- CHARTS -->
+
+        <section>
+
+            <table width="100%">
+
+                <tr>
+
+                    <td width="70%" valign="top">
+
+                        <h2>Assessment Over Time</h2>
+
+                        <hr>
+
+                        <br><br><br>
+
+                        <center>
+
+                            <p>LINE GRAPH PLACEHOLDER</p>
+
+                        </center>
+
+                        <br><br><br>
+
+                    </td>
+
+                    <td width="30%" valign="top">
+
+                        <h2>Risk Level Distribution</h2>
+
+                        <hr>
+
+                        <br><br><br>
+
+                        <center>
+
+                            <p>PIE CHART PLACEHOLDER</p>
+
+                        </center>
+
+                        <br><br><br>
+
+                    </td>
+
+                </tr>
+
+            </table>
+
+        </section>
+
+        <br>
+
+        <!-- RECENT ASSESSMENTS -->
+
+        <section>
+
+            <h2>Recent Assessments</h2>
+
+            <table border="1" width="100%" cellpadding="10">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Student Alias</th>
+
+                        <th>Risk Level</th>
+
+                        <th>PHQ-9</th>
+
+                        <th>GAD-7</th>
+
+                        <th>Submitted At</th>
+
+                        <th>Status</th>
+
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr>
+
+                        <td>Batosai</td>
+
+                        <td>High</td>
+
+                        <td>18</td>
+
+                        <td>13</td>
+
+                        <td>May 10, 2026</td>
+
+                        <td>Pending</td>
+
+                        <td>
+
+                            <a href="view_assessment.php">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>CalmLeaf</td>
+
+                        <td>Moderate</td>
+
+                        <td>11</td>
+
+                        <td>8</td>
+
+                        <td>May 09, 2026</td>
+
+                        <td>Reviewed</td>
+
+                        <td>
+
+                            <a href="view_assessment.php">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+
+</html>

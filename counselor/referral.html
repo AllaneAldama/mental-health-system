@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Referral Management</title>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside>
+
+        <h2>PTC Wellness</h2>
+
+        <hr>
+
+        <nav>
+            <ul>
+                <li><a href="dashboard.php">Dashboard</a></li>
+                <li><a href="assessment_queue.php">Assessments</a></li>
+                <li><a href="monitoring.php">Monitoring</a></li>
+                <li><a href="referral.php">Referrals</a></li>
+                <li><a href="assessment_history.php">Assessment History</a></li>
+                <li><a href="profile.php">Profile</a></li>
+            </ul>
+        </nav>
+
+    </aside>
+
+    <!-- Main Content -->
+    <main>
+
+        <header>
+
+            <h1>Referral Management</h1>
+
+            <button>+ Schedule Referral</button>
+
+        </header>
+
+        <hr>
+
+        <!-- Tabs -->
+
+        <section>
+
+            <button>All Referrals</button>
+            <button>Scheduled</button>
+            <button>Completed</button>
+            <button>Cancelled</button>
+
+        </section>
+
+        <br>
+
+        <!-- Referral Table -->
+
+        <section>
+
+            <table border="1" width="100%" cellpadding="10">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Student Alias</th>
+                        <th>Risk Level</th>
+                        <th>Referral Status</th>
+                        <th>Scheduled Date</th>
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr>
+
+                        <td>CalmLeaf</td>
+                        <td>High</td>
+                        <td>Scheduled</td>
+                        <td>May 12, 2026 10:30 AM</td>
+
+                        <td>
+
+                            <a href="#">Edit</a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>PeacefulOne</td>
+                        <td>High</td>
+                        <td>Scheduled</td>
+                        <td>May 14, 2026 1:00 PM</td>
+
+                        <td>
+
+                            <a href="#">Edit</a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>Sunshine22</td>
+                        <td>Moderate</td>
+                        <td>Monitoring</td>
+                        <td>Not Scheduled</td>
+
+                        <td>
+
+                            <a href="#">View</a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>HopefulSoul</td>
+                        <td>Low</td>
+                        <td>Completed</td>
+                        <td>May 08, 2026</td>
+
+                        <td>
+
+                            <a href="#">View</a>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+        <br>
+
+        <!-- Schedule Referral Form -->
+
+        <section>
+
+            <h2>Schedule Referral</h2>
+
+            <form action="#" method="POST">
+
+                <p>
+
+                    <label>Student Alias</label><br>
+
+                    <input type="text" name="student">
+
+                </p>
+
+                <p>
+
+                    <label>Referral Date</label><br>
+
+                    <input type="date" name="date">
+
+                </p>
+
+                <p>
+
+                    <label>Referral Time</label><br>
+
+                    <input type="time" name="time">
+
+                </p>
+
+                <p>
+
+                    <label>Status</label><br>
+
+                    <select name="status">
+
+                        <option>Scheduled</option>
+                        <option>Completed</option>
+                        <option>Cancelled</option>
+
+                    </select>
+
+                </p>
+
+                <p>
+
+                    <label>Remarks</label><br>
+
+                    <textarea name="remarks" rows="5"></textarea>
+
+                </p>
+
+                <button type="submit">
+
+                    Save Referral
+
+                </button>
+
+            </form>
+
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>
