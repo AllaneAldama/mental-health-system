@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="" />
+  </head>
+
+  <body>
+    <nav>
+      <ul>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="user_management.html">User Management</a></li>
+        <li><a href="assessment_management.html">Assessment Management</a></li>
+        <li><a href="reports.html">Reports</a></li>
+        <li><a href="referrals.html">Referrals</a></li>
+        <li><a href="settings.html">Settings</a></li>
+      </ul>
+    </nav>
+
+    <main>
+      <header><h1>Settings</h1></header>
+
+      <section>
+        <h2>Change Password</h2>
+
+        <form action="#" method="post">
+          <div>
+            <label for="current-password">Current Password</label>
+            <input
+              type="password"
+              id="current-password"
+              name="current_password"
+              required
+            />
+          </div>
+
+          <div>
+            <label for="new-password">New Password</label>
+            <input
+              type="password"
+              id="new-password"
+              name="new_password"
+              required
+            />
+          </div>
+
+          <div>
+            <label for="confirm-password">Confirm New Password</label>
+            <input
+              type="password"
+              id="confirm-password"
+              name="confirm_password"
+              required
+            />
+          </div>
+
+          <button type="submit">Update Password</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>System Information</h2>
+
+        <dl>
+          <div>
+            <dt>System Name</dt>
+            <dd>Deniggafier</dd>
+          </div>
+
+          <div>
+            <dt>Version</dt>
+            <dd>1.0.0</dd>
+          </div>
+
+          <div>
+            <dt>Developed By</dt>
+            <dd>BSIT Capstone Team</dd>
+          </div>
+
+          <div>
+            <dt>Last Updated</dt>
+            <dd>July 2026</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section>
+        <h2>Deliverables</h2>
+
+        <ul>
+          <li>User Manual</li>
+          <li>Technical Documentation</li>
+          <li>Database Backup</li>
+          <li>Source Code</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
