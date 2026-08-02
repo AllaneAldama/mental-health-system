@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment History</title>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside>
+
+        <h2>PTC Wellness</h2>
+
+        <hr>
+
+        <nav>
+
+            <ul>
+
+                <li><a href="dashboard.php">Dashboard</a></li>
+
+                <li><a href="assessment_queue.php">Assessment Queue</a></li>
+
+                <li><a href="view_assessment.php">Assessment Details</a></li>
+
+                <li><a href="referral.php">Referral Management</a></li>
+
+                <li><a href="monitoring.php">Monitoring</a></li>
+
+                <li><a href="assessment_history.php">Assessment History</a></li>
+
+                <li><a href="profile.php">Profile</a></li>
+
+                <li><a href="../auth/logout.php">Logout</a></li>
+
+            </ul>
+
+        </nav>
+
+    </aside>
+
+    <!-- Main Content -->
+
+    <main>
+
+        <header>
+
+            <h1>Assessment History</h1>
+
+            <p>View all completed and reviewed assessments.</p>
+
+        </header>
+
+        <hr>
+
+        <!-- Search and Filter -->
+
+        <section>
+
+            <form>
+
+                <label>Search Student</label>
+
+                <input type="text" placeholder="Enter Student Alias">
+
+                <label>Status</label>
+
+                <select>
+
+                    <option>All</option>
+                    <option>Completed</option>
+                    <option>Reviewed</option>
+
+                </select>
+
+                <button type="submit">Search</button>
+
+            </form>
+
+        </section>
+
+        <br>
+
+        <!-- Assessment History Table -->
+
+        <section>
+
+            <table border="1" width="100%" cellpadding="10">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Student Alias</th>
+                        <th>PHQ-9</th>
+                        <th>GAD-7</th>
+                        <th>Risk Level</th>
+                        <th>Date Reviewed</th>
+                        <th>Status</th>
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr>
+
+                        <td>CalmLeaf</td>
+                        <td>18</td>
+                        <td>14</td>
+                        <td>High</td>
+                        <td>May 12, 2026</td>
+                        <td>Reviewed</td>
+
+                        <td>
+
+                            <a href="view_assessment.php">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>HopefulSoul</td>
+                        <td>11</td>
+                        <td>8</td>
+                        <td>Moderate</td>
+                        <td>May 10, 2026</td>
+                        <td>Completed</td>
+
+                        <td>
+
+                            <a href="view_assessment.php">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>BrightSky</td>
+                        <td>6</td>
+                        <td>4</td>
+                        <td>Low</td>
+                        <td>May 08, 2026</td>
+                        <td>Completed</td>
+
+                        <td>
+
+                            <a href="view_assessment.php">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+        <br>
+
+        <!-- Statistics -->
+
+        <section>
+
+            <h2>History Summary</h2>
+
+            <table border="1" cellpadding="10">
+
+                <tr>
+
+                    <td>Total Reviewed Assessments</td>
+
+                    <td>35</td>
+
+                </tr>
+
+                <tr>
+
+                    <td>Completed Referrals</td>
+
+                    <td>18</td>
+
+                </tr>
+
+                <tr>
+
+                    <td>Students Under Monitoring</td>
+
+                    <td>9</td>
+
+                </tr>
+
+            </table>
+
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>

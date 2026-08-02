@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assessment Queue</title>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- Sidebar -->
+    <aside>
+
+        <h2>PTC Wellness</h2>
+
+        <hr>
+
+        <nav>
+            <ul>
+                <li><a href="dashboard.php">Dashboard</a></li>
+                <li><a href="assessment_queue.php">Assessments</a></li>
+                <li><a href="monitoring.php">Monitoring</a></li>
+                <li><a href="referral.php">Referrals</a></li>
+                <li><a href="assessment_history.php">Assessment History</a></li>
+                <li><a href="profile.php">Profile</a></li>
+            </ul>
+        </nav>
+
+    </aside>
+
+
+    <!-- Main Content -->
+    <main>
+
+        <header>
+
+            <h1>Assessment Queue</h1>
+
+        </header>
+
+        <section>
+
+            <h3>Search Assessment</h3>
+
+            <input type="text" placeholder="Search Student">
+
+            <select>
+                <option>All Risk Levels</option>
+                <option>High</option>
+                <option>Moderate</option>
+                <option>Low</option>
+            </select>
+
+            <select>
+                <option>All Status</option>
+                <option>Pending</option>
+                <option>Reviewed</option>
+                <option>Referred</option>
+            </select>
+
+            <button>Search</button>
+
+        </section>
+
+
+        <section>
+
+            <table border="1" width="100%">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Student Alias</th>
+                        <th>Risk Level</th>
+                        <th>PHQ-9</th>
+                        <th>GAD-7</th>
+                        <th>Submitted At</th>
+                        <th>Status</th>
+                        <th>Action</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    <tr>
+
+                        <td>Tungtung</td>
+                        <td>High</td>
+                        <td>19</td>
+                        <td>17</td>
+                        <td>May 12, 2026</td>
+                        <td>Pending</td>
+
+                        <td>
+
+                            <a href="view_assessment.php?id=1">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    <tr>
+
+                        <td>Sahur</td>
+                        <td>Moderate</td>
+                        <td>15</td>
+                        <td>12</td>
+                        <td>May 11, 2026</td>
+                        <td>Reviewed</td>
+
+                        <td>
+
+                            <a href="view_assessment.php?id=2">
+
+                                View
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+    </main>
+
+</div>
+
+</body>
+</html>
