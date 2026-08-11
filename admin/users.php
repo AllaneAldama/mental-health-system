@@ -40,7 +40,7 @@ if ($result) {
       <ul>
         <li><a href="dashboard.php">Dashboard</a></li>
         <li><a href="users.php">User Management</a></li>
-        <li><a href="assessments.php">Assessment Management</a></li>
+        <li><a href="assessments.php">Assessments</a></li>
         <li><a href="reports.php">Reports</a></li>
         <li><a href="referrals.php">Referrals</a></li>
         <li><a href="settings.php">Settings</a></li>

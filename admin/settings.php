@@ -40,7 +40,7 @@ $app_version = '1.0.0'; // bump if you track versions elsewhere
     <nav>
       <ul>
         <li><a href="dashboard.php">Dashboard</a></li>
-        <li><a href="users.php">Users</a></li>
+        <li><a href="users.php">User Management</a></li>
         <li><a href="assessments.php">Assessments</a></li>
         <li><a href="reports.php">Reports</a></li>
         <li><a href="referrals.php">Referrals</a></li>

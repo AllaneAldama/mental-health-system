@@ -16,7 +16,7 @@ function column_exists($conn,$table,$column){$t=mysqli_real_escape_string($conn,
 
 // candidates
 $ref_candidates = ['referrals','referral','referral_requests','referral_records','referral_submissions'];
-rtable = null; foreach ($ref_candidates as $c) { if (table_exists($conn,$c)) { $rtable=$c; break; } }
+$rtable = null; foreach ($ref_candidates as $c) { if (table_exists($conn,$c)) { $rtable=$c; break; } }
 $assessment_candidates = ['assessments','assessment','assessment_results','assessment_submissions','assessment_records'];
 $atable = null; foreach ($assessment_candidates as $c) { if (table_exists($conn,$c)) { $atable=$c; break; } }
 

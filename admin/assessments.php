@@ -102,7 +102,7 @@ if ($atable) {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Assessment Management</title>
+    <title>Assessments</title>
     <style>
       body{font-family:Arial,Helvetica,sans-serif;margin:16px}
       nav ul{list-style:none;padding:0;display:flex;gap:12px}
@@ -119,7 +119,7 @@ if ($atable) {
       <ul>
         <li><a href="dashboard.php">Dashboard</a></li>
         <li><a href="users.php">User Management</a></li>
-        <li><a href="assessments.php">Assessment Management</a></li>
+        <li><a href="assessments.php">Assessments</a></li>
         <li><a href="reports.php">Reports</a></li>
         <li><a href="referrals.php">Referrals</a></li>
         <li><a href="settings.php">Settings</a></li>
@@ -128,7 +128,7 @@ if ($atable) {
 
     <main>
       <header>
-        <h1>Assessment Management</h1>
+        <h1>Assessments</h1>
       </header>
 
       <?php if (!$atable): ?>

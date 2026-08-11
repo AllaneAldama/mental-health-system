@@ -11,7 +11,7 @@ function column_exists($conn,$table,$column){$t=mysqli_real_escape_string($conn,
 
 // find referral table
 $candidates = ['referrals','referral','referral_requests','referral_records','referral_submissions'];
-rtable = null;
+$rtable = null;
 foreach ($candidates as $c) { if (table_exists($conn,$c)) { $rtable = $c; break; } }
 
 // fallback: use assessments table where status='Referred'
@@ -61,9 +61,16 @@ if ($rtable) {
     <style>body{font-family:Arial,Helvetica,sans-serif;margin:16px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f4f4f4}.muted{color:#666}.btn{padding:6px 8px;border-radius:4px;background:#007bff;color:#fff;text-decoration:none}</style>
   </head>
   <body>
-    <nav><ul style="list-style:none;padding:0;display:flex;gap:12px"><li><a href="dashboard.php">Dashboard</a></li><li><a href="users.php">Users</a></li><li><a href="assessments.php">Assessments</a></li><li><a href="reports.php">Reports</a></li><li><a href="referrals.php">Referrals</a></li></ul></nav>
+    <nav><ul style="list-style:none;padding:0;display:flex;gap:12px"><li><a href="dashboard.php">Dashboard</a></li>
+        <li><a href="users.php">User Management</a></li>
+        <li><a href="assessments.php">Assessments</a></li>
+        <li><a href="reports.php">Reports</a></li>
+        <li><a href="referrals.php">Referrals</a></li>
+        <li><a href="settings.php">Settings</a></li>
+        </ul>
+    </nav>
     <main>
-      <h1>Referral Management</h1>
+      <h1>Referrals</h1>
 
       <?php if (!$rtable && !$atable): ?>
         <p style="color:#a00">No referrals table detected and no assessments table with 'Referred' status found. If you have a referrals table, provide its name and columns.</p>

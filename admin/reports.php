@@ -147,7 +147,15 @@ if (isset($_GET['export']) && $_GET['export']==='csv') {
     <style>body{font-family:Arial,Helvetica,sans-serif;margin:16px}.card{border:1px solid #ddd;padding:12px;border-radius:6px;margin-bottom:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}</style>
   </head>
   <body>
-    <nav><ul style="list-style:none;display:flex;gap:12px;padding:0"><li><a href="dashboard.php">Dashboard</a></li><li><a href="users.php">Users</a></li><li><a href="assessments.php">Assessments</a></li><li><a href="reports.php">Reports</a></li></ul></nav>
+    <nav><ul style="list-style:none;display:flex;gap:12px;padding:0">
+        <li><a href="dashboard.php">Dashboard</a></li>
+        <li><a href="users.php">User Management</a></li>
+        <li><a href="assessments.php">Assessments</a></li>
+        <li><a href="reports.php">Reports</a></li>
+        <li><a href="referrals.php">Referrals</a></li>
+        <li><a href="settings.php">Settings</a></li>
+        </ul>
+    </nav>
     <main>
       <h1>Reports</h1>
 
