@@ -1,40 +1,52 @@
 <?php
+
 session_start();
 
 require_once "../config/database.php";
-require_once "../includes/functions.php";
 
 /** @var mysqli $conn */
 
-if (!isPostRequest()) {
-    redirect("login.php");
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    header("Location: login.php");
+    exit();
 }
 
-$email = sanitizeInput($_POST['email']);
-$password = sanitizeInput($_POST['password']);
+$email = trim($_POST['email'] ?? '');
+$password = $_POST['password'] ?? '';
 
-if (empty($email) || empty($password)) {
-    redirect("login.php");
+if ($email === '' || $password === '') {
+    die("Email and password are required.");
 }
 
-$sql = "SELECT * FROM user_data WHERE email = ?";
+$sql = "SELECT user_id, fullname, email, password, role_type, status
+        FROM user_data
+        WHERE email = ?
+        LIMIT 1";
 
 $stmt = mysqli_prepare($conn, $sql);
 
-mysqli_stmt_bind_param($stmt, "s", $email);
+if (!$stmt) {
+    die("Database error: " . mysqli_error($conn));
+}
 
+mysqli_stmt_bind_param($stmt, "s", $email);
 mysqli_stmt_execute($stmt);
 
 $result = mysqli_stmt_get_result($stmt);
-
 $user = mysqli_fetch_assoc($result);
 
+mysqli_stmt_close($stmt);
+
 if (!$user) {
-    redirect("login.php");
+    die("No account found with this email.");
 }
 
-if (!password_verify($password, $user['password_hash'])) {
-    redirect("login.php");
+if (!password_verify($password, $user['password'])) {
+    die("Incorrect password.");
+}
+
+if ($user['status'] !== 'active') {
+    die("This account is inactive.");
 }
 
 $_SESSION['user_id'] = $user['user_id'];
@@ -42,9 +54,17 @@ $_SESSION['fullname'] = $user['fullname'];
 $_SESSION['role_type'] = $user['role_type'];
 
 if ($user['role_type'] === 'admin') {
-    redirect("../admin/dashboard.php");
+
+    header("Location: ../admin/dashboard.php");
+
 } elseif ($user['role_type'] === 'counselor') {
-    redirect("../counselor/dashboard.php");
+
+    header("Location: ../counselor/dashboard.php");
+
 } else {
-    redirect("../student/dashboard.php");
+
+    header("Location: ../student/dashboard.php");
 }
+
+exit();
+?>
