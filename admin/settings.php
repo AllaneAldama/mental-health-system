@@ -26,30 +26,45 @@ $app_version = '1.0.0'; // bump if you track versions elsewhere
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Settings</title>
     <style>
-      body{font-family:Arial,Helvetica,sans-serif;margin:16px}
-      nav ul{list-style:none;padding:0;display:flex;gap:12px}
-      form{max-width:480px;margin-top:12px}
-      label{display:block;margin-top:8px}
-      input{width:100%;padding:8px;margin-top:4px}
-      .card{border:1px solid #ddd;padding:12px;border-radius:6px;margin-top:12px}
-      .btn{display:inline-block;padding:8px 12px;background:#007bff;color:#fff;border-radius:4px;text-decoration:none}
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; background: #efeeeb; color: #1a1a1a; }
+      a { text-decoration: none; color: inherit; }
+      .app-shell { display: flex; min-height: 100vh; }
+      .sidebar { width: 260px; background: #5c8a60; color: #fff; padding: 22px 18px 18px; display: flex; flex-direction: column; }
+      .brand { font-size: 2rem; font-weight: 500; letter-spacing: -0.05em; padding: 6px 12px 20px; }
+      .nav { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+      .nav-link { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; font-size: 1.05rem; font-weight: 600; color: #f1f5ef; }
+      .nav-link.active, .nav-link:hover { background: #edf2ee; color: #1f3d2a; }
+      .nav-icon { width: 22px; display: inline-flex; justify-content: center; }
+      .logout { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.25); padding-top: 16px; }
+      .main-content { flex: 1; padding: 30px 32px 40px; }
+      .page-title { font-size: 2.5rem; margin: 0 0 20px; font-weight: 600; letter-spacing: -0.05em; }
+      form { max-width: 480px; }
+      label { display: block; margin-top: 8px; font-weight: 600; }
+      input { width: 100%; padding: 10px 12px; margin-top: 6px; border-radius: 8px; border: 1px solid #cfd7d1; }
+      .card { border: 1px solid #dfe4dc; border-radius: 12px; background: rgba(255,255,255,0.2); padding: 18px 20px; margin-top: 18px; }
+      .btn { display:inline-block; padding: 10px 14px; border-radius: 8px; background: #5c8a60; color:#fff; border:none; cursor:pointer; }
       .muted{color:#666}
+      @media (max-width: 980px) { .app-shell { display: block; } .sidebar { width: 100%; } .main-content { padding: 22px 18px 30px; } }
     </style>
   </head>
   <body>
-    <nav>
-      <ul>
-        <li><a href="dashboard.php">Dashboard</a></li>
-        <li><a href="users.php">User Management</a></li>
-        <li><a href="assessments.php">Assessments</a></li>
-        <li><a href="reports.php">Reports</a></li>
-        <li><a href="referrals.php">Referrals</a></li>
-        <li><a href="settings.php">Settings</a></li>
-      </ul>
-    </nav>
-
-    <main>
-      <h1>Settings</h1>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">PTC Wellness</div>
+        <nav class="nav" aria-label="Main navigation">
+          <a class="nav-link" href="dashboard.php"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+          <a class="nav-link" href="users.php"><span class="nav-icon">👥</span><span>Users</span></a>
+          <a class="nav-link" href="assessments.php"><span class="nav-icon">📝</span><span>Assessments</span></a>
+          <a class="nav-link" href="referrals.php"><span class="nav-icon">🔁</span><span>Referrals</span></a>
+          <a class="nav-link" href="reports.php"><span class="nav-icon">📊</span><span>Reports</span></a>
+          <a class="nav-link active" href="settings.php"><span class="nav-icon">⚙️</span><span>Settings</span></a>
+          <a class="nav-link logout" href="../auth/logout.php"><span class="nav-icon">↩️</span><span>Logout</span></a>
+        </nav>
+      </aside>
+      <main class="main-content">
+        <h1 class="page-title">Settings</h1>
 
       <section class="card">
         <h2>Change Password</h2>
