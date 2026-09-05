@@ -49,7 +49,7 @@ if ($action === 'add') {
     }
 
     $password_hash = password_hash($password, PASSWORD_DEFAULT);
-    $status = 'Active';
+    $status = 'active';
 
     $insert = "INSERT INTO user_data (fullname, email, password_hash, role_type, status) VALUES (?, ?, ?, ?, ?)";
     $istmt = mysqli_prepare($conn, $insert);
@@ -125,7 +125,7 @@ if ($action === 'add') {
         exit();
     }
 
-    $new_status = $toggle_action === 'activate' ? 'Active' : 'Deactive';
+    $new_status = $toggle_action === 'activate' ? 'active' : 'inactive';
     $update = "UPDATE user_data SET status = ? WHERE user_id = ?";
     $ustmt = mysqli_prepare($conn, $update);
     mysqli_stmt_bind_param($ustmt, 'si', $new_status, $user_id);

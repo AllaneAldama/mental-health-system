@@ -93,8 +93,8 @@ if ($result) {
             <label for="status">Status</label>
             <select id="status">
               <option value="">All</option>
-              <option value="Active">Active</option>
-              <option value="Deactive">Deactive</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
             </select>
 
             <button id="apply-filter">Apply</button>
@@ -115,14 +115,14 @@ if ($result) {
 
             <tbody>
               <?php foreach ($users as $u): ?>
-              <tr data-name="<?= htmlspecialchars(strtolower($u['fullname'])) ?>" data-email="<?= htmlspecialchars(strtolower($u['email'])) ?>" data-role="<?= htmlspecialchars($u['role_type']) ?>" data-status="<?= htmlspecialchars($u['status']) ?>">
+              <tr data-name="<?= htmlspecialchars(strtolower($u['fullname'])) ?>" data-email="<?= htmlspecialchars(strtolower($u['email'])) ?>" data-role="<?= htmlspecialchars($u['role_type']) ?>" data-status="<?= htmlspecialchars(strtolower($u['status'] ?? '')) ?>">
                 <td><?= htmlspecialchars($u['fullname']) ?></td>
                 <td><?= htmlspecialchars($u['email']) ?></td>
                 <td><?= htmlspecialchars(ucfirst($u['role_type'])) ?></td>
-                <td><?= htmlspecialchars($u['status']) ?></td>
+                <td><?= htmlspecialchars(ucfirst(strtolower($u['status'] ?? ''))) ?></td>
                 <td>
                   <button class="edit-btn" data-id="<?= $u['user_id'] ?>">Edit</button>
-                  <?php if ($u['status'] === 'Active'): ?>
+                  <?php if (strtolower($u['status'] ?? '') === 'active'): ?>
                     <button class="toggle-status-btn" data-id="<?= $u['user_id'] ?>" data-action="deactivate">Deactivate</button>
                   <?php else: ?>
                     <button class="toggle-status-btn" data-id="<?= $u['user_id'] ?>" data-action="activate">Activate</button>

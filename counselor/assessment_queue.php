@@ -1,1332 +1,574 @@
 <?php
-
 require_once __DIR__ . "/../includes/session.php";
-require_once __DIR__ . "/../config/database.php";
-
-/*
-|--------------------------------------------------------------------------
-| ALLOW ONLY COUNSELOR
-|--------------------------------------------------------------------------
-*/
-
+// Allow only counselor
 if (!isset($_SESSION['role_type']) || $_SESSION['role_type'] !== 'counselor') {
     header("Location: ../auth/login.php");
     exit();
 }
+require_once __DIR__ . "/../config/database.php";
 
+/** Helper: check whether a table exists */
+function table_exists($conn, $name) {
+    $name_esc = mysqli_real_escape_string($conn, $name);
+    $sql = "SHOW TABLES LIKE '$name_esc'";
+    $res = mysqli_query($conn, $sql);
+    return ($res && mysqli_num_rows($res) > 0);
+}
 
-/*
-|--------------------------------------------------------------------------
-| MESSAGE
-|--------------------------------------------------------------------------
-*/
+/** Helper: check whether a column exists on a table */
+function column_exists($conn, $table, $column) {
+    $t = mysqli_real_escape_string($conn, $table);
+    $c = mysqli_real_escape_string($conn, $column);
+    $sql = "SHOW COLUMNS FROM `$t` LIKE '$c'";
+    $res = mysqli_query($conn, $sql);
+    return ($res && mysqli_num_rows($res) > 0);
+}
 
-$message = "";
-$message_type = "";
+/** Helper: run a query safely */
+function run_query($conn, $sql) {
+    $res = mysqli_query($conn, $sql);
+    return $res ?: false;
+}
 
-
-/*
-|--------------------------------------------------------------------------
-| CREATE ASSESSMENT
-|--------------------------------------------------------------------------
-*/
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_assessment'])) {
-
-    $student_alias = trim($_POST['student_alias'] ?? '');
-    $risk_level    = trim($_POST['risk_level'] ?? '');
-    $phq9_score    = intval($_POST['phq9_score'] ?? -1);
-    $gad7_score    = intval($_POST['gad7_score'] ?? -1);
-    $status        = trim($_POST['status'] ?? '');
-
-    $allowed_risk = [
-        'Low',
-        'Moderate',
-        'High'
-    ];
-
-    $allowed_status = [
-        'Pending',
-        'Reviewed',
-        'Referred'
-    ];
-
-    if (
-        $student_alias !== '' &&
-        in_array($risk_level, $allowed_risk, true) &&
-        in_array($status, $allowed_status, true) &&
-        $phq9_score >= 0 &&
-        $phq9_score <= 27 &&
-        $gad7_score >= 0 &&
-        $gad7_score <= 21
-    ) {
-
-        /*
-        |--------------------------------------------------------------------------
-        | DATE REVIEWED
-        |--------------------------------------------------------------------------
-        */
-
-        if ($status === 'Pending') {
-            $date_reviewed = null;
-        } else {
-            $date_reviewed = date('Y-m-d H:i:s');
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | INSERT
-        |--------------------------------------------------------------------------
-        */
-
-        $sql = "
-            INSERT INTO assessments
-            (
-                student_alias,
-                risk_level,
-                phq9_score,
-                gad7_score,
-                date_reviewed,
-                status
-            )
-            VALUES (?, ?, ?, ?, ?, ?)
-        ";
-
-        $stmt = mysqli_prepare($conn, $sql);
-
-        if ($stmt) {
-
-            mysqli_stmt_bind_param(
-                $stmt,
-                "ssiiss",
-                $student_alias,
-                $risk_level,
-                $phq9_score,
-                $gad7_score,
-                $date_reviewed,
-                $status
-            );
-
-            if (mysqli_stmt_execute($stmt)) {
-                $message = "Assessment successfully added.";
-                $message_type = "success";
-            } else {
-                $message = "Failed to add assessment.";
-                $message_type = "error";
-            }
-
-            mysqli_stmt_close($stmt);
-
-        } else {
-            $message = "Database error while preparing the assessment.";
-            $message_type = "error";
-        }
-
-    } else {
-
-        $message = "Please enter valid assessment information.";
-        $message_type = "error";
-    }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | REDIRECT
-    |--------------------------------------------------------------------------
-    */
-
-    if ($message_type === "success") {
-        header("Location: assessment_queue.php?message=created");
-        exit();
+// Detect assessment table and use the actual schema columns from assessment_data
+$assessment_table_candidates = [
+    'assessment_data', 'assessments', 'assessment', 'assessment_results', 'assessment_submissions',
+    'assessment_records', 'responses', 'survey_responses', 'phq9_results', 'gad7_results'
+];
+$assessment_table = null;
+foreach ($assessment_table_candidates as $cand) {
+    if (table_exists($conn, $cand)) {
+        $assessment_table = $cand;
+        break;
     }
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE ASSESSMENT
-|--------------------------------------------------------------------------
-*/
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_assessment'])) {
-
-    $assessment_id = intval($_POST['assessment_id'] ?? 0);
-
-    $student_alias = trim($_POST['student_alias'] ?? '');
-    $risk_level    = trim($_POST['risk_level'] ?? '');
-    $phq9_score    = intval($_POST['phq9_score'] ?? -1);
-    $gad7_score    = intval($_POST['gad7_score'] ?? -1);
-    $status        = trim($_POST['status'] ?? '');
-
-    $allowed_risk = [
-        'Low',
-        'Moderate',
-        'High'
-    ];
-
-    $allowed_status = [
-        'Pending',
-        'Reviewed',
-        'Referred'
-    ];
-
-
-    if (
-        $assessment_id > 0 &&
-        $student_alias !== '' &&
-        in_array($risk_level, $allowed_risk, true) &&
-        in_array($status, $allowed_status, true) &&
-        $phq9_score >= 0 &&
-        $phq9_score <= 27 &&
-        $gad7_score >= 0 &&
-        $gad7_score <= 21
-    ) {
-
-        /*
-        |--------------------------------------------------------------------------
-        | PENDING
-        |--------------------------------------------------------------------------
-        */
-
-        if ($status === 'Pending') {
-
-            $sql = "
-                UPDATE assessments
-                SET
-                    student_alias = ?,
-                    risk_level = ?,
-                    phq9_score = ?,
-                    gad7_score = ?,
-                    date_reviewed = NULL,
-                    status = ?
-                WHERE assessment_id = ?
-            ";
-
-            $stmt = mysqli_prepare($conn, $sql);
-
-            if ($stmt) {
-
-                mysqli_stmt_bind_param(
-                    $stmt,
-                    "ssiisi",
-                    $student_alias,
-                    $risk_level,
-                    $phq9_score,
-                    $gad7_score,
-                    $status,
-                    $assessment_id
-                );
-
-            }
-
-        /*
-        |--------------------------------------------------------------------------
-        | REVIEWED / REFERRED
-        |--------------------------------------------------------------------------
-        */
-
-        } else {
-
-            $date_reviewed = date('Y-m-d H:i:s');
-
-            $sql = "
-                UPDATE assessments
-                SET
-                    student_alias = ?,
-                    risk_level = ?,
-                    phq9_score = ?,
-                    gad7_score = ?,
-                    date_reviewed = ?,
-                    status = ?
-                WHERE assessment_id = ?
-            ";
-
-            $stmt = mysqli_prepare($conn, $sql);
-
-            if ($stmt) {
-
-                mysqli_stmt_bind_param(
-                    $stmt,
-                    "ssiissi",
-                    $student_alias,
-                    $risk_level,
-                    $phq9_score,
-                    $gad7_score,
-                    $date_reviewed,
-                    $status,
-                    $assessment_id
-                );
-
-            }
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | EXECUTE UPDATE
-        |--------------------------------------------------------------------------
-        */
-
-        if (isset($stmt) && $stmt) {
-
-            if (mysqli_stmt_execute($stmt)) {
-                $message = "Assessment successfully updated.";
-                $message_type = "success";
-            } else {
-                $message = "Failed to update assessment.";
-                $message_type = "error";
-            }
-
-            mysqli_stmt_close($stmt);
-
-        } else {
-
-            $message = "Database error while updating assessment.";
-            $message_type = "error";
-        }
-
-    } else {
-
-        $message = "Invalid assessment information.";
-        $message_type = "error";
+// Actual schema mapping for this project
+$cols = [
+    'id' => 'assessment_id',
+    'student' => 'user_id',
+    'risk' => 'risk_level',
+    'phq' => 'phq9_score',
+    'gad' => 'gad7_score',
+    'submitted' => 'assessment_date',
+    'status' => 'status'
+];
+if ($assessment_table && $assessment_table !== 'assessment_data') {
+    foreach (['id','assessment_id','submission_id','record_id','entry_id'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['id']=$c; break; }
     }
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | REDIRECT
-    |--------------------------------------------------------------------------
-    */
-
-    if ($message_type === "success") {
-        header("Location: assessment_queue.php?message=updated");
-        exit();
+    foreach (['student_alias','alias','user_alias','submitted_by','student_id','user_id','fullname'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['student']=$c; break; }
+    }
+    foreach (['risk_level','risk','risklevel'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['risk']=$c; break; }
+    }
+    foreach (['phq_score','phq9_score','phq_total','phq_total_score'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['phq']=$c; break; }
+    }
+    foreach (['gad_score','gad7_score','gad_total','gad_total_score'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['gad']=$c; break; }
+    }
+    foreach (['submitted_at','created_at','assessment_date','timestamp','submitted'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['submitted']=$c; break; }
+    }
+    foreach (['status','review_status','submission_status'] as $c) {
+        if (column_exists($conn,$assessment_table,$c)) { $cols['status']=$c; break; }
     }
 }
 
-
-/*
-|--------------------------------------------------------------------------
-| UPDATE STATUS ONLY
-|--------------------------------------------------------------------------
-*/
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
-
-    $assessment_id = intval($_POST['assessment_id'] ?? 0);
-    $status = trim($_POST['status'] ?? '');
-
-    $allowed_status = [
-        'Pending',
-        'Reviewed',
-        'Referred'
-    ];
-
-
-    if (
-        $assessment_id > 0 &&
-        in_array($status, $allowed_status, true)
-    ) {
-
-        /*
-        |--------------------------------------------------------------------------
-        | PENDING
-        |--------------------------------------------------------------------------
-        */
-
-        if ($status === 'Pending') {
-
-            $sql = "
-                UPDATE assessments
-                SET
-                    status = ?,
-                    date_reviewed = NULL
-                WHERE assessment_id = ?
-            ";
-
-            $stmt = mysqli_prepare($conn, $sql);
-
-            if ($stmt) {
-
-                mysqli_stmt_bind_param(
-                    $stmt,
-                    "si",
-                    $status,
-                    $assessment_id
-                );
-            }
-
-        /*
-        |--------------------------------------------------------------------------
-        | REVIEWED / REFERRED
-        |--------------------------------------------------------------------------
-        */
-
-        } else {
-
-            $date_reviewed = date('Y-m-d H:i:s');
-
-            $sql = "
-                UPDATE assessments
-                SET
-                    status = ?,
-                    date_reviewed = ?
-                WHERE assessment_id = ?
-            ";
-
-            $stmt = mysqli_prepare($conn, $sql);
-
-            if ($stmt) {
-
-                mysqli_stmt_bind_param(
-                    $stmt,
-                    "ssi",
-                    $status,
-                    $date_reviewed,
-                    $assessment_id
-                );
-            }
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | EXECUTE
-        |--------------------------------------------------------------------------
-        */
-
-        if (isset($stmt) && $stmt) {
-
-            mysqli_stmt_execute($stmt);
-            mysqli_stmt_close($stmt);
-        }
-    }
-
-
-    header("Location: assessment_queue.php");
-    exit();
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| DELETE ASSESSMENT
-|--------------------------------------------------------------------------
-*/
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_assessment'])) {
-
-    $assessment_id = intval($_POST['assessment_id'] ?? 0);
-
-    if ($assessment_id > 0) {
-
-        $sql = "
-            DELETE FROM assessments
-            WHERE assessment_id = ?
-        ";
-
-        $stmt = mysqli_prepare($conn, $sql);
-
-        if ($stmt) {
-
-            mysqli_stmt_bind_param(
-                $stmt,
-                "i",
-                $assessment_id
-            );
-
-            mysqli_stmt_execute($stmt);
-
-            mysqli_stmt_close($stmt);
-        }
-    }
-
-
-    header("Location: assessment_queue.php?message=deleted");
-    exit();
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| SUCCESS / ERROR MESSAGES
-|--------------------------------------------------------------------------
-*/
-
-if (isset($_GET['message'])) {
-
-    switch ($_GET['message']) {
-
-        case 'created':
-            $message = "Assessment successfully added.";
-            $message_type = "success";
-            break;
-
-        case 'updated':
-            $message = "Assessment successfully updated.";
-            $message_type = "success";
-            break;
-
-        case 'deleted':
-            $message = "Assessment successfully deleted.";
-            $message_type = "success";
-            break;
-    }
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| SEARCH AND FILTER
-|--------------------------------------------------------------------------
-*/
-
-$search = isset($_GET['search'])
-    ? trim($_GET['search'])
-    : '';
-
-$risk_filter = isset($_GET['risk'])
-    ? trim($_GET['risk'])
-    : '';
-
-$status_filter = isset($_GET['status'])
-    ? trim($_GET['status'])
-    : '';
-
-
-/*
-|--------------------------------------------------------------------------
-| GET ASSESSMENTS
-|--------------------------------------------------------------------------
-*/
-
-$sql = "
-    SELECT
-        assessment_id,
-        student_alias,
-        risk_level,
-        phq9_score,
-        gad7_score,
-        date_reviewed,
-        status
-    FROM assessments
-    WHERE 1 = 1
-";
-
-$params = [];
-$types = "";
-
-
-/*
-|--------------------------------------------------------------------------
-| SEARCH STUDENT
-|--------------------------------------------------------------------------
-*/
-
-if ($search !== '') {
-
-    $sql .= " AND student_alias LIKE ?";
-
-    $params[] = "%" . $search . "%";
-
-    $types .= "s";
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| FILTER RISK
-|--------------------------------------------------------------------------
-*/
-
-if ($risk_filter !== '') {
-
-    $sql .= " AND risk_level = ?";
-
-    $params[] = $risk_filter;
-
-    $types .= "s";
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| FILTER STATUS
-|--------------------------------------------------------------------------
-*/
-
-if ($status_filter !== '') {
-
-    $sql .= " AND status = ?";
-
-    $params[] = $status_filter;
-
-    $types .= "s";
-}
-
-
-/*
-|--------------------------------------------------------------------------
-| ORDER
-|--------------------------------------------------------------------------
-*/
-
-$sql .= " ORDER BY assessment_id DESC";
-
-
-/*
-|--------------------------------------------------------------------------
-| PREPARE QUERY
-|--------------------------------------------------------------------------
-*/
-
-$stmt = mysqli_prepare($conn, $sql);
+// Get search and filter parameters
+$search = isset($_GET['q']) ? trim($_GET['q']) : '';
+$filter_status = isset($_GET['status']) ? trim($_GET['status']) : '';
+$filter_risk = isset($_GET['risk']) ? trim($_GET['risk']) : '';
+$sort_by = isset($_GET['sort']) ? trim($_GET['sort']) : 'recent';
 
 $assessments = [];
+$total_count = 0;
 
-if ($stmt) {
+if ($assessment_table && !empty($cols['student']) && !empty($cols['submitted'])) {
+    $alias = $assessment_table === 'assessment_data' ? 'a' : $assessment_table;
+    $select_cols = [];
+    $select_cols[] = $alias . '.' . $cols['id'] . ' AS assessment_id';
+    $select_cols[] = 'u.fullname AS student_name';
+    if ($cols['risk']) $select_cols[] = $alias . '.' . $cols['risk'] . ' AS risk_level';
+    if ($cols['phq']) $select_cols[] = $alias . '.' . $cols['phq'] . ' AS phq_score';
+    if ($cols['gad']) $select_cols[] = $alias . '.' . $cols['gad'] . ' AS gad_score';
+    $select_cols[] = $alias . '.' . $cols['submitted'] . ' AS submitted_at';
+    if ($cols['status']) $select_cols[] = $alias . '.' . $cols['status'] . ' AS status';
 
-    /*
-    |--------------------------------------------------------------------------
-    | BIND PARAMETERS
-    |--------------------------------------------------------------------------
-    */
+    $sql = "SELECT " . implode(', ', $select_cols) . " FROM `$assessment_table` `$alias` LEFT JOIN user_data u ON u.user_id = $alias.user_id";
 
-    if (count($params) > 0) {
+    $where = [];
 
-        /*
-        | mysqli_stmt_bind_param requires references.
-        | This creates the references correctly.
-        */
-
-        $bind_values = [];
-
-        $bind_values[] = $types;
-
-        foreach ($params as $key => $value) {
-            $bind_values[] = &$params[$key];
-        }
-
-        call_user_func_array(
-            [$stmt, 'bind_param'],
-            $bind_values
-        );
+    if ($search) {
+        $s = mysqli_real_escape_string($conn, $search);
+        $where[] = "(u.fullname LIKE '%$s%' OR u.email LIKE '%$s%' OR u.student_number LIKE '%$s%' OR $alias.assessment_id LIKE '%$s%')";
     }
 
+    if ($filter_status === '') {
+        if ($cols['status']) {
+            $where[] = "($alias." . $cols['status'] . " IN ('Pending','Pending Review','Reviewed','Monitoring','Referred') OR $alias." . $cols['status'] . " IS NULL)";
+        }
+    } else {
+        if ($cols['status']) {
+            $fs = mysqli_real_escape_string($conn, $filter_status);
+            $where[] = "$alias." . $cols['status'] . " = '$fs'";
+        }
+    }
 
-    /*
-    |--------------------------------------------------------------------------
-    | EXECUTE
-    |--------------------------------------------------------------------------
-    */
+    if ($filter_risk) {
+        if ($cols['risk']) {
+            $fr = mysqli_real_escape_string($conn, $filter_risk);
+            $where[] = "$alias." . $cols['risk'] . " = '$fr'";
+        }
+    }
 
-    mysqli_stmt_execute($stmt);
+    if ($where) {
+        $sql .= ' WHERE ' . implode(' AND ', $where);
+    }
 
-    $result = mysqli_stmt_get_result($stmt);
+    if ($sort_by === 'risk_high') {
+        $sql .= " ORDER BY FIELD($alias." . $cols['risk'] . ", 'High', 'Moderate', 'Low', 'high', 'moderate', 'low'), $alias." . $cols['submitted'] . " DESC";
+    } else {
+        $sql .= " ORDER BY $alias." . $cols['submitted'] . " DESC, $alias." . $cols['id'] . " DESC";
+    }
 
-    if ($result) {
-
-        while ($row = mysqli_fetch_assoc($result)) {
-
+    $res = run_query($conn, $sql);
+    if ($res) {
+        while ($row = mysqli_fetch_assoc($res)) {
             $assessments[] = $row;
         }
+        $total_count = count($assessments);
     }
-
-    mysqli_stmt_close($stmt);
 }
 
+$status_options = ['Pending', 'Reviewed', 'Monitoring', 'Referred'];
+$risk_options = ['High', 'Moderate', 'Low'];
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-
+<!doctype html>
+<html>
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1.0"
-    >
-
-    <title>Assessment Queue</title>
-
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Assessment Queue - Counselor</title>
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; }
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: #efeeeb;
+            color: #1a1a1a;
+        }
+        a { text-decoration: none; color: inherit; }
+        .app-shell {
+            display: flex;
+            min-height: 100vh;
+        }
+        .sidebar {
+            width: 260px;
+            background: #5c8a60;
+            color: #fff;
+            padding: 22px 18px 18px;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .brand {
+            font-size: 2rem;
+            font-weight: 500;
+            letter-spacing: -0.05em;
+            padding: 6px 12px 20px;
+            color: #f5f8f3;
+        }
+        .nav {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #f1f5ef;
+            transition: all 0.2s ease;
+        }
+        .nav-link:hover,
+        .nav-link.active {
+            background: #edf2ee;
+            color: #1f3d2a;
+        }
+        .nav-icon {
+            width: 22px;
+            display: inline-flex;
+            justify-content: center;
+        }
+        .logout {
+            margin-top: auto;
+            border-top: 1px solid rgba(255,255,255,0.25);
+            padding-top: 16px;
+        }
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            padding: 30px 32px 40px;
+        }
+        .page-header {
+            margin-bottom: 10px;
+        }
+        .page-title {
+            font-size: 2.7rem;
+            margin: 0;
+            font-weight: 600;
+            letter-spacing: -0.06em;
+        }
+        .page-subtitle {
+            margin: 0 0 22px;
+            font-size: 1.2rem;
+            color: #4c4c4c;
+        }
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #d8dcd8;
+            border-radius: 8px;
+            padding: 10px 14px;
+            gap: 8px;
+        }
+        .search-box input {
+            flex: 1;
+            border: none;
+            font-size: 1rem;
+            outline: none;
+        }
+        .filter-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        select {
+            background: white;
+            border: 1px solid #d8dcd8;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 1rem;
+            cursor: pointer;
+            color: #1a1a1a;
+        }
+        .btn {
+            background: #5c8a60;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 18px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        .btn:hover {
+            background: #4a6f4f;
+        }
+        .btn-secondary {
+            background: #a0a8a0;
+        }
+        .btn-secondary:hover {
+            background: #8a9289;
+        }
+        .table-wrap {
+            background: white;
+            border: 1px solid #d8dcd8;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: #f5f7f5;
+            border-bottom: 2px solid #d8dcd8;
+        }
+        th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid #e8ebe8;
+        }
+        tbody tr:hover {
+            background: #f9faf9;
+        }
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+        .risk-high {
+            color: #d9695d;
+            font-weight: 600;
+        }
+        .risk-moderate {
+            color: #e2bf61;
+            font-weight: 600;
+        }
+        .risk-low {
+            color: #7ba889;
+            font-weight: 600;
+        }
+        .status-pending {
+            background: #fff4e6;
+            color: #d97706;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        .status-reviewed {
+            background: #dbeafe;
+            color: #0284c7;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        .status-referred {
+            background: #ddd6fe;
+            color: #6f42c1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            display: inline-block;
+        }
+        .action-links {
+            display: flex;
+            gap: 12px;
+        }
+        .action-links a {
+            padding: 8px 14px;
+            background: #5c8a60;
+            color: white;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+        .action-links a:hover {
+            background: #4a6f4f;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 32px;
+            color: #666;
+        }
+        .empty-state-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+        .empty-state h3 {
+            margin: 0 0 8px;
+            font-size: 1.5rem;
+        }
+        .empty-state p {
+            margin: 0;
+            color: #999;
+        }
+        .queue-stats {
+            background: white;
+            border: 1px solid #d8dcd8;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            gap: 40px;
+        }
+        .stat-item {
+            flex: 0 0 auto;
+        }
+        .stat-label {
+            font-size: 0.95rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #5c8a60;
+        }
+        .alert-note {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 6px;
+            margin-bottom: 24px;
+            color: #92400e;
+        }
+    </style>
 </head>
-
-
 <body>
-
-<div class="container">
-
-
-    <!-- =====================================================
-         SIDEBAR
-    ====================================================== -->
-
-    <aside>
-
-        <h2>PTC Wellness</h2>
-
-        <hr>
-
-        <nav>
-
-            <ul>
-
-                <li>
-                    <a href="dashboard.php">
-                        Dashboard
-                    </a>
-                </li>
-
-                <li>
-                    <a href="assessment_queue.php">
-                        Assessments
-                    </a>
-                </li>
-
-                <li>
-                    <a href="monitoring.php">
-                        Monitoring
-                    </a>
-                </li>
-
-                <li>
-                    <a href="referral.php">
-                        Referrals
-                    </a>
-                </li>
-
-                <li>
-                    <a href="assessment_history.php">
-                        Assessment History
-                    </a>
-                </li>
-
-                <li>
-                    <a href="profile.php">
-                        Profile
-                    </a>
-                </li>
-
-                <li>
-                    <a href="../auth/logout.php">
-                        Logout
-                    </a>
-                </li>
-
-            </ul>
-
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">PTC Wellness</div>
+        <nav class="nav" aria-label="Main navigation">
+          <a class="nav-link" href="dashboard.php"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
+          <a class="nav-link active" href="assessment_queue.php"><span class="nav-icon">📋</span><span>Assessments Queue</span></a>
+          <a class="nav-link" href="monitoring.php"><span class="nav-icon">👁️</span><span>Monitoring</span></a>
+          <a class="nav-link" href="referral.php"><span class="nav-icon">📤</span><span>Referral</span></a>
+          <a class="nav-link" href="assessment_history.php"><span class="nav-icon">📚</span><span>Assessment History</span></a>
+          <a class="nav-link" href="profile.php"><span class="nav-icon">👤</span><span>Profile</span></a>
+          <a class="nav-link logout" href="../auth/logout.php"><span class="nav-icon">↩️</span><span>Logout</span></a>
         </nav>
+      </aside>
 
-    </aside>
-
-
-    <!-- =====================================================
-         MAIN CONTENT
-    ====================================================== -->
-
-    <main>
-
-        <header>
-
-            <h1>
-                Assessment Queue
-            </h1>
-
-            <p>
-                View and manage student assessments.
-            </p>
-
-        </header>
-
-
-        <hr>
-
-
-        <!-- =====================================================
-             MESSAGE
-        ====================================================== -->
-
-        <?php if ($message !== ''): ?>
-
-            <div>
-
-                <strong>
-                    <?= htmlspecialchars($message) ?>
-                </strong>
-
+        <main class="main-content">
+            <div class="page-header">
+                <h1 class="page-title">Assessment Queue</h1>
+                <p class="page-subtitle">View and manage pending assessments</p>
             </div>
 
-            <br>
-
-        <?php endif; ?>
-
-
-        <!-- =====================================================
-             CREATE ASSESSMENT
-        ====================================================== -->
-
-        <section>
-
-            <h2>
-                Add New Assessment
-            </h2>
-
-            <form method="POST">
-
-                <input
-                    type="text"
-                    name="student_alias"
-                    placeholder="Student Alias"
-                    required
-                >
-
-
-                <select
-                    name="risk_level"
-                    required
-                >
-
-                    <option value="">
-                        Select Risk Level
-                    </option>
-
-                    <option value="Low">
-                        Low
-                    </option>
-
-                    <option value="Moderate">
-                        Moderate
-                    </option>
-
-                    <option value="High">
-                        High
-                    </option>
-
-                </select>
-
-
-                <input
-                    type="number"
-                    name="phq9_score"
-                    min="0"
-                    max="27"
-                    placeholder="PHQ-9 Score"
-                    required
-                >
-
-
-                <input
-                    type="number"
-                    name="gad7_score"
-                    min="0"
-                    max="21"
-                    placeholder="GAD-7 Score"
-                    required
-                >
-
-
-                <select
-                    name="status"
-                    required
-                >
-
-                    <option value="Pending">
-                        Pending
-                    </option>
-
-                    <option value="Reviewed">
-                        Reviewed
-                    </option>
-
-                    <option value="Referred">
-                        Referred
-                    </option>
-
-                </select>
-
-
-                <button
-                    type="submit"
-                    name="create_assessment"
-                >
-                    Add Assessment
-                </button>
-
-            </form>
-
-        </section>
-
-
-        <br>
-
-        <hr>
-
-        <br>
-
-
-        <!-- =====================================================
-             SEARCH AND FILTER
-        ====================================================== -->
-
-        <section>
-
-            <h2>
-                Search Assessment
-            </h2>
-
-            <form method="GET">
-
-                <input
-                    type="text"
-                    name="search"
-                    placeholder="Search Student Alias"
-                    value="<?= htmlspecialchars($search) ?>"
-                >
-
-
-                <select name="risk">
-
-                    <option value="">
-                        All Risk Levels
-                    </option>
-
-                    <option
-                        value="High"
-                        <?= $risk_filter === 'High' ? 'selected' : '' ?>
-                    >
-                        High
-                    </option>
-
-                    <option
-                        value="Moderate"
-                        <?= $risk_filter === 'Moderate' ? 'selected' : '' ?>
-                    >
-                        Moderate
-                    </option>
-
-                    <option
-                        value="Low"
-                        <?= $risk_filter === 'Low' ? 'selected' : '' ?>
-                    >
-                        Low
-                    </option>
-
-                </select>
-
-
-                <select name="status">
-
-                    <option value="">
-                        All Status
-                    </option>
-
-                    <option
-                        value="Pending"
-                        <?= $status_filter === 'Pending' ? 'selected' : '' ?>
-                    >
-                        Pending
-                    </option>
-
-                    <option
-                        value="Reviewed"
-                        <?= $status_filter === 'Reviewed' ? 'selected' : '' ?>
-                    >
-                        Reviewed
-                    </option>
-
-                    <option
-                        value="Referred"
-                        <?= $status_filter === 'Referred' ? 'selected' : '' ?>
-                    >
-                        Referred
-                    </option>
-
-                </select>
-
-
-                <button type="submit">
-                    Search
-                </button>
-
-
-                <a href="assessment_queue.php">
-                    Clear
-                </a>
-
-            </form>
-
-        </section>
-
-
-        <br>
-
-
-        <!-- =====================================================
-             ASSESSMENT TABLE
-        ====================================================== -->
-
-        <section>
-
-            <h2>
-                Assessment Records
-            </h2>
-
-
-            <table
-                border="1"
-                width="100%"
-                cellpadding="10"
-            >
-
-                <thead>
-
-                    <tr>
-
-                        <th>
-                            ID
-                        </th>
-
-                        <th>
-                            Student Alias
-                        </th>
-
-                        <th>
-                            Risk Level
-                        </th>
-
-                        <th>
-                            PHQ-9
-                        </th>
-
-                        <th>
-                            GAD-7
-                        </th>
-
-                        <th>
-                            Date Reviewed
-                        </th>
-
-                        <th>
-                            Status
-                        </th>
-
-                        <th>
-                            Actions
-                        </th>
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                <?php if (count($assessments) > 0): ?>
-
-                    <?php foreach ($assessments as $assessment): ?>
-
-                    <tr>
-
-
-                        <!-- ID -->
-
-                        <td>
-
-                            <?= htmlspecialchars(
-                                $assessment['assessment_id']
-                            ) ?>
-
-                        </td>
-
-
-                        <!-- STUDENT -->
-
-                        <td>
-
-                            <?= htmlspecialchars(
-                                $assessment['student_alias']
-                            ) ?>
-
-                        </td>
-
-
-                        <!-- RISK -->
-
-                        <td>
-
-                            <?= htmlspecialchars(
-                                $assessment['risk_level']
-                            ) ?>
-
-                        </td>
-
-
-                        <!-- PHQ9 -->
-
-                        <td>
-
-                            <?= htmlspecialchars(
-                                $assessment['phq9_score']
-                            ) ?>
-
-                        </td>
-
-
-                        <!-- GAD7 -->
-
-                        <td>
-
-                            <?= htmlspecialchars(
-                                $assessment['gad7_score']
-                            ) ?>
-
-                        </td>
-
-
-                        <!-- DATE -->
-
-                        <td>
-
-                            <?php
-
-                            if (!empty($assessment['date_reviewed'])) {
-
-                                echo htmlspecialchars(
-                                    date(
-                                        'F d, Y h:i A',
-                                        strtotime(
-                                            $assessment['date_reviewed']
-                                        )
-                                    )
-                                );
-
-                            } else {
-
-                                echo "Not reviewed";
-
-                            }
-
-                            ?>
-
-                        </td>
-
-
-                        <!-- STATUS -->
-
-                        <td>
-
-                            <?= htmlspecialchars(
-                                $assessment['status']
-                            ) ?>
-
-                        </td>
-
-
-                        <!-- ACTIONS -->
-
-                        <td>
-
-
-                            <!-- READ -->
-
-                            <a
-                                href="view_assessment.php?id=<?= $assessment['assessment_id'] ?>"
-                            >
-                                View
-                            </a>
-
-
-                            <br>
-                            <br>
-
-
-                            <!-- =================================================
-                                 UPDATE
-                            ================================================== -->
-
-                            <form method="POST">
-
-                                <input
-                                    type="hidden"
-                                    name="assessment_id"
-                                    value="<?= $assessment['assessment_id'] ?>"
-                                >
-
-
-                                <input
-                                    type="text"
-                                    name="student_alias"
-                                    value="<?= htmlspecialchars($assessment['student_alias']) ?>"
-                                    required
-                                >
-
-
-                                <select
-                                    name="risk_level"
-                                    required
-                                >
-
-                                    <option
-                                        value="Low"
-                                        <?= $assessment['risk_level'] === 'Low'
-                                            ? 'selected'
-                                            : '' ?>
-                                    >
-                                        Low
-                                    </option>
-
-                                    <option
-                                        value="Moderate"
-                                        <?= $assessment['risk_level'] === 'Moderate'
-                                            ? 'selected'
-                                            : '' ?>
-                                    >
-                                        Moderate
-                                    </option>
-
-                                    <option
-                                        value="High"
-                                        <?= $assessment['risk_level'] === 'High'
-                                            ? 'selected'
-                                            : '' ?>
-                                    >
-                                        High
-                                    </option>
-
-                                </select>
-
-
-                                <input
-                                    type="number"
-                                    name="phq9_score"
-                                    min="0"
-                                    max="27"
-                                    value="<?= $assessment['phq9_score'] ?>"
-                                    required
-                                >
-
-
-                                <input
-                                    type="number"
-                                    name="gad7_score"
-                                    min="0"
-                                    max="21"
-                                    value="<?= $assessment['gad7_score'] ?>"
-                                    required
-                                >
-
-
-                                <select
-                                    name="status"
-                                    required
-                                >
-
-                                    <option
-                                        value="Pending"
-                                        <?= $assessment['status'] === 'Pending'
-                                            ? 'selected'
-                                            : '' ?>
-                                    >
-                                        Pending
-                                    </option>
-
-                                    <option
-                                        value="Reviewed"
-                                        <?= $assessment['status'] === 'Reviewed'
-                                            ? 'selected'
-                                            : '' ?>
-                                    >
-                                        Reviewed
-                                    </option>
-
-                                    <option
-                                        value="Referred"
-                                        <?= $assessment['status'] === 'Referred'
-                                            ? 'selected'
-                                            : '' ?>
-                                    >
-                                        Referred
-                                    </option>
-
-                                </select>
-
-
-                                <button
-                                    type="submit"
-                                    name="update_assessment"
-                                >
-                                    Update
-                                </button>
-
-                            </form>
-
-
-                            <br>
-
-
-                            <!-- =================================================
-                                 DELETE
-                            ================================================== -->
-
-                            <form
-                                method="POST"
-                                onsubmit="return confirm('Are you sure you want to delete this assessment?');"
-                            >
-
-                                <input
-                                    type="hidden"
-                                    name="assessment_id"
-                                    value="<?= $assessment['assessment_id'] ?>"
-                                >
-
-
-                                <button
-                                    type="submit"
-                                    name="delete_assessment"
-                                >
-                                    Delete
-                                </button>
-
-                            </form>
-
-
-                        </td>
-
-                    </tr>
-
-                    <?php endforeach; ?>
-
-
+            <?php if ($assessment_table): ?>
+                <div class="queue-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Total in Queue</div>
+                        <div class="stat-value"><?php echo $total_count; ?></div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <div class="controls">
+                <form method="GET" action="" style="display: flex; gap: 12px; flex: 1; min-width: 250px;">
+                    <div class="search-box">
+                        <span>🔍</span>
+                        <input type="text" name="q" placeholder="Search student name or ID..." value="<?php echo htmlspecialchars($search); ?>">
+                    </div>
+                    <button type="submit" class="btn">Search</button>
+                </form>
+
+                <div class="filter-group">
+                    <form method="GET" action="" style="display: flex; gap: 12px;">
+                        <input type="hidden" name="q" value="<?php echo htmlspecialchars($search); ?>">
+                        
+                        <select name="risk" onchange="this.form.submit()">
+                            <option value="">All Risk Levels</option>
+                            <?php foreach ($risk_options as $risk): ?>
+                                <option value="<?php echo htmlspecialchars($risk); ?>" <?php echo $filter_risk === $risk ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($risk); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <select name="status" onchange="this.form.submit()">
+                            <option value="">All Statuses</option>
+                            <?php foreach ($status_options as $status): ?>
+                                <option value="<?php echo htmlspecialchars($status); ?>" <?php echo $filter_status === $status ? 'selected' : ''; ?>>
+                                    <?php echo htmlspecialchars($status); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+
+                        <select name="sort" onchange="this.form.submit()">
+                            <option value="recent" <?php echo $sort_by === 'recent' ? 'selected' : ''; ?>>Most Recent</option>
+                            <option value="risk_high" <?php echo $sort_by === 'risk_high' ? 'selected' : ''; ?>>Highest Risk</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <?php if ($assessment_table): ?>
+                <?php if (!empty($assessments)): ?>
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Risk Level</th>
+                                    <th>PHQ-9</th>
+                                    <th>GAD-7</th>
+                                    <th>Submitted</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($assessments as $assessment): ?>
+                                    <tr>
+                                        <td>
+                                            <?php 
+                                            $student_name = !empty($assessment['student_fullname']) 
+                                                ? htmlspecialchars($assessment['student_fullname'])
+                                                : htmlspecialchars($assessment['student_name']);
+                                            echo $student_name;
+                                            ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($assessment['risk_level'])): ?>
+                                                <span class="risk-<?php echo strtolower($assessment['risk_level']); ?>">
+                                                    <?php echo htmlspecialchars($assessment['risk_level']); ?>
+                                                </span>
+                                            <?php else: ?>
+                                                <span style="color: #999;">N/A</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td><?php echo !empty($assessment['phq_score']) ? htmlspecialchars($assessment['phq_score']) : 'N/A'; ?></td>
+                                        <td><?php echo !empty($assessment['gad_score']) ? htmlspecialchars($assessment['gad_score']) : 'N/A'; ?></td>
+                                        <td><?php echo !empty($assessment['submitted_at']) ? htmlspecialchars(date('M d, Y h:i A', strtotime($assessment['submitted_at']))) : 'N/A'; ?></td>
+                                        <td>
+                                            <?php 
+                                            $status = !empty($assessment['status']) ? strtolower($assessment['status']) : 'pending';
+                                            $status_class = 'status-' . str_replace(' ', '-', $status);
+                                            if (!strpos($status_class, 'status-')) {
+                                                $status_class = 'status-pending';
+                                            }
+                                            ?>
+                                            <span class="<?php echo $status_class; ?>">
+                                                <?php echo htmlspecialchars(ucfirst($assessment['status'] ?? 'Pending')); ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="action-links">
+                                                <a href="view_assessment.php?id=<?php echo htmlspecialchars($assessment['assessment_id']); ?>">View</a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
                 <?php else: ?>
-
-
-                    <tr>
-
-                        <td
-                            colspan="8"
-                            align="center"
-                        >
-                            No assessments found.
-                        </td>
-
-                    </tr>
-
-
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📭</div>
+                        <h3>No Assessments Found</h3>
+                        <p><?php echo $search ? 'Try adjusting your search criteria' : 'No pending assessments at the moment'; ?></p>
+                    </div>
                 <?php endif; ?>
-
-                </tbody>
-
-            </table>
-
-        </section>
-
-    </main>
-
-</div>
-
+            <?php else: ?>
+                <div class="alert-note">
+                    ⚠️ No assessments table was detected. If your assessments table uses a different name or schema, 
+                    please contact your administrator or update the database configuration.
+                </div>
+            <?php endif; ?>
+        </main>
+    </div>
 </body>
-
 </html>

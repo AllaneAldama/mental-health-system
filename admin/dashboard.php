@@ -36,9 +36,9 @@ function run_count($conn, $sql) {
 $total_students = 0;
 $total_counselors = 0;
 if (table_exists($conn, 'user_data')) {
-    // prefer counting only Active users
-    $total_students = run_count($conn, "SELECT COUNT(*) FROM user_data WHERE role_type = 'student' AND status = 'Active'");
-    $total_counselors = run_count($conn, "SELECT COUNT(*) FROM user_data WHERE role_type = 'counselor' AND status = 'Active'");
+    // prefer counting only active users
+    $total_students = run_count($conn, "SELECT COUNT(*) FROM user_data WHERE role_type = 'student' AND status = 'active'");
+    $total_counselors = run_count($conn, "SELECT COUNT(*) FROM user_data WHERE role_type = 'counselor' AND status = 'active'");
 }
 
 // 2) Assessments table detection
