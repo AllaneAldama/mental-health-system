@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 
 require_once "../config/database.php";
@@ -8,12 +9,13 @@ mysqli_report(MYSQLI_REPORT_OFF);
 
 /** @var mysqli $conn */
 
-if (!isPostRequest()) {
-    redirect("login.php");
+if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+    header("Location: login.php");
+    exit();
 }
 
-$email = sanitizeInput($_POST['email']);
-$password = sanitizeInput($_POST['password']);
+$email = trim($_POST['email'] ?? '');
+$password = $_POST['password'] ?? '';
 
 if (empty($email) || empty($password)) {
     system_monitor_log($conn, 'login_failure', null, null, 'Missing login credentials');
@@ -38,6 +40,8 @@ try {
     redirect("login.php");
 }
 
+mysqli_stmt_close($stmt);
+
 if (!$user) {
     system_monitor_log($conn, 'login_failure', null, null, 'Invalid credentials');
     redirect("login.php");
@@ -59,9 +63,17 @@ $_SESSION['role_type'] = $user['role_type'];
 system_monitor_log($conn, 'login_success', (int)$user['user_id'], (int)$user['user_id'], 'Successful sign-in');
 
 if ($user['role_type'] === 'admin') {
-    redirect("../admin/dashboard.php");
+
+    header("Location: ../admin/dashboard.php");
+
 } elseif ($user['role_type'] === 'counselor') {
-    redirect("../counselor/dashboard.php");
+
+    header("Location: ../counselor/dashboard.php");
+
 } else {
-    redirect("../student/dashboard.php");
+
+    header("Location: ../student/dashboard.php");
 }
+
+exit();
+?>
