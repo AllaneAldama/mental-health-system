@@ -43,7 +43,7 @@ if (table_exists($conn, 'user_data')) {
 
 // 2) Assessments table detection
 $assessment_table_candidates = [
-    'assessments', 'assessment', 'assessment_data', 'assessment_results', 'assessment_submissions',
+    'assessment_data', 'assessments', 'assessment', 'assessment_results', 'assessment_submissions',
     'assessment_records', 'responses', 'survey_responses', 'phq9_results', 'gad7_results'
 ];
 $assessment_table = null;
@@ -54,6 +54,14 @@ foreach ($assessment_table_candidates as $cand) {
 $total_assessments = 0;
 $pending_assessments = 0;
 $high_risk_cases = 0;
+$recent_assessments = [];
+$monthly_assessments = [];
+$risk_distribution = [
+    'High' => 0,
+    'Moderate' => 0,
+    'Low' => 0,
+];
+$dashboard_data_error = '';
 
 if ($assessment_table) {
     // total assessments
@@ -93,6 +101,115 @@ if ($assessment_table) {
             $high_risk_cases = $where ? run_count($conn, "SELECT COUNT(*) FROM `$assessment_table` WHERE $where") : 0;
         }
     }
+
+    if (
+        $assessment_table === 'assessment_data'
+        && table_exists($conn, 'user_data')
+        && column_exists($conn, $assessment_table, 'assessment_date')
+        && column_exists($conn, $assessment_table, 'assessment_id')
+        && column_exists($conn, $assessment_table, 'user_id')
+        && column_exists($conn, $assessment_table, 'risk_level')
+        && column_exists($conn, $assessment_table, 'phq9_score')
+        && column_exists($conn, $assessment_table, 'gad7_score')
+        && column_exists($conn, $assessment_table, 'status')
+        && column_exists($conn, 'user_data', 'fullname')
+        && column_exists($conn, 'user_data', 'alias')
+    ) {
+        $first_month = new DateTimeImmutable('first day of this month');
+        $first_month = $first_month->modify('-5 months');
+        $month_labels = [];
+        for ($i = 0; $i < 6; $i++) {
+            $month = $first_month->modify("+$i months");
+            $month_key = $month->format('Y-m');
+            $month_labels[$month_key] = [
+                'label' => $month->format('M'),
+                'count' => 0,
+            ];
+        }
+
+        $range_start = $first_month->format('Y-m-d');
+        $range_end = (new DateTimeImmutable('first day of next month'))->format('Y-m-d');
+        $trend_sql = "SELECT DATE_FORMAT(assessment_date, '%Y-%m') AS month_key, COUNT(*) AS assessment_count
+                      FROM `$assessment_table`
+                      WHERE assessment_date >= '$range_start' AND assessment_date < '$range_end'
+                      GROUP BY DATE_FORMAT(assessment_date, '%Y-%m')";
+        $trend_result = mysqli_query($conn, $trend_sql);
+        if ($trend_result) {
+            while ($trend_row = mysqli_fetch_assoc($trend_result)) {
+                if (isset($month_labels[$trend_row['month_key']])) {
+                    $month_labels[$trend_row['month_key']]['count'] = (int)$trend_row['assessment_count'];
+                }
+            }
+            $monthly_assessments = array_values($month_labels);
+        } else {
+            $dashboard_data_error = 'Unable to load the assessment trend: ' . mysqli_error($conn);
+        }
+
+        $risk_sql = "SELECT
+                         SUM(CASE WHEN LOWER(TRIM(risk_level)) = 'high' THEN 1 ELSE 0 END) AS high_count,
+                         SUM(CASE WHEN LOWER(TRIM(risk_level)) = 'moderate' THEN 1 ELSE 0 END) AS moderate_count,
+                         SUM(CASE WHEN LOWER(TRIM(risk_level)) = 'low' THEN 1 ELSE 0 END) AS low_count
+                     FROM `$assessment_table`";
+        $risk_result = mysqli_query($conn, $risk_sql);
+        if ($risk_result && ($risk_row = mysqli_fetch_assoc($risk_result))) {
+            $risk_distribution = [
+                'High' => (int)$risk_row['high_count'],
+                'Moderate' => (int)$risk_row['moderate_count'],
+                'Low' => (int)$risk_row['low_count'],
+            ];
+        } elseif (!$risk_result) {
+            $dashboard_data_error = 'Unable to load risk distribution: ' . mysqli_error($conn);
+        }
+
+        $recent_sql = "SELECT a.assessment_id, a.phq9_score, a.gad7_score, a.risk_level, a.assessment_date, a.status,
+                              u.fullname, u.alias
+                       FROM `$assessment_table` a
+                       LEFT JOIN user_data u ON u.user_id = a.user_id
+                       ORDER BY a.assessment_date DESC, a.assessment_id DESC
+                       LIMIT 8";
+        $recent_result = mysqli_query($conn, $recent_sql);
+        if ($recent_result) {
+            while ($recent_row = mysqli_fetch_assoc($recent_result)) {
+                $recent_assessments[] = $recent_row;
+            }
+        } else {
+            $dashboard_data_error = 'Unable to load recent assessments: ' . mysqli_error($conn);
+        }
+    } else {
+        $dashboard_data_error = 'Assessment charts require the assessment_data and user_data fields from the configured schema.';
+    }
+}
+
+$risk_total = array_sum($risk_distribution);
+$risk_colors = [
+    'High' => '#d9695d',
+    'Moderate' => '#e2bf61',
+    'Low' => '#7ba889',
+];
+$risk_stops = [];
+$risk_offset = 0;
+foreach ($risk_distribution as $risk_name => $risk_count) {
+    $slice = $risk_total > 0 ? ($risk_count / $risk_total) * 100 : 0;
+    $risk_stops[] = $risk_colors[$risk_name] . ' ' . $risk_offset . '% ' . ($risk_offset + $slice) . '%';
+    $risk_offset += $slice;
+}
+$risk_donut_background = $risk_total > 0
+    ? 'conic-gradient(' . implode(', ', $risk_stops) . ')'
+    : '#dfe4dc';
+
+$trend_max = 0;
+foreach ($monthly_assessments as $month_row) {
+    $trend_max = max($trend_max, (int)$month_row['count']);
+}
+$trend_scale_max = max(1, (int)(ceil($trend_max / 5) * 5));
+$trend_points = [];
+$trend_x_positions = [];
+$trend_count = count($monthly_assessments);
+foreach ($monthly_assessments as $index => $month_row) {
+    $x = $trend_count > 1 ? 48 + ($index * (392 / ($trend_count - 1))) : 244;
+    $y = 150 - (((int)$month_row['count'] / $trend_scale_max) * 120);
+    $trend_points[] = round($x, 1) . ',' . round($y, 1);
+    $trend_x_positions[] = round($x, 1);
 }
 
 // If assessments table not found, leave numbers as 0 and present an informational note in the UI
@@ -246,7 +363,7 @@ if ($assessment_table) {
         width: 164px;
         height: 164px;
         border-radius: 50%;
-        background: conic-gradient(#d9695d 0 30%, #e2bf61 30% 80%, #7ba889 80% 100%);
+        background: #dfe4dc;
       }
       .donut::after {
         content: "";
@@ -255,6 +372,22 @@ if ($assessment_table) {
         background: #efeeeb;
         border-radius: 50%;
         border: 1px solid #dfe4dc;
+      }
+      .donut-total {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.55rem;
+        font-weight: 800;
+      }
+      .donut-total small {
+        color: #6a6a6a;
+        font-size: 0.72rem;
+        font-weight: 600;
       }
       .legend {
         display: flex;
@@ -317,6 +450,18 @@ if ($assessment_table) {
         border-radius: 10px;
         color: #7a5402;
       }
+      .chart-empty {
+        width: 100%;
+        color: #777;
+        text-align: center;
+        font-size: 0.9rem;
+      }
+      .risk-empty {
+        width: 100%;
+        color: #777;
+        text-align: center;
+        font-size: 0.85rem;
+      }
       @media (max-width: 980px) {
         .app-shell { display: block; }
         .sidebar { width: 100%; }
@@ -346,9 +491,6 @@ if ($assessment_table) {
       </aside>
 
       <main class="main-content">
-        <header class="page-header">
-          <h1 class="page-title">Dashboard Overview</h1>
-        </header>
 
         <p class="page-subtitle">Welcome back, <?= htmlspecialchars($_SESSION['fullname'] ?? 'Counselor') ?>!</p>
 
@@ -378,51 +520,69 @@ if ($assessment_table) {
         <section class="panel-grid">
           <article class="panel">
             <h2 class="panel-title">Assessment Overview</h2>
-            <div class="chart-wrap" aria-label="Assessment overview chart">
-              <svg width="100%" height="200" viewBox="0 0 460 200" preserveAspectRatio="none" role="img">
-                <g fill="none" stroke="#a9b6a9" stroke-width="1">
-                  <line x1="20" y1="150" x2="440" y2="150" />
-                  <line x1="20" y1="120" x2="440" y2="120" />
-                  <line x1="20" y1="90" x2="440" y2="90" />
-                  <line x1="20" y1="60" x2="440" y2="60" />
-                  <line x1="20" y1="30" x2="440" y2="30" />
-                </g>
-                <g fill="none" stroke="#5c8a60" stroke-width="3">
-                  <path d="M20 150 C90 120, 120 90, 160 80 S240 60, 260 70 S310 140, 340 102 S390 75, 440 80" />
-                </g>
-                <g fill="#5c8a60">
-                  <circle cx="160" cy="80" r="4" />
-                  <circle cx="260" cy="70" r="4" />
-                  <circle cx="340" cy="102" r="4" />
-                </g>
-                <g fill="#3d3d3d" font-size="11" font-family="Segoe UI, sans-serif">
-                  <text x="30" y="170">May</text>
-                  <text x="120" y="170">June</text>
-                  <text x="210" y="170">July</text>
-                  <text x="300" y="170">August</text>
-                  <text x="390" y="170">September</text>
-                </g>
-              </svg>
+            <div class="chart-wrap">
+              <?php if (!empty($monthly_assessments)): ?>
+                <svg width="100%" height="220" viewBox="0 0 460 210" preserveAspectRatio="none" role="img" aria-label="Assessment counts per month for the last six months">
+                  <g fill="none" stroke="#d5ddd4" stroke-width="1">
+                    <?php for ($grid_line = 0; $grid_line <= 4; $grid_line++): ?>
+                      <?php $grid_y = 150 - ($grid_line * 30); ?>
+                      <line x1="42" y1="<?php echo $grid_y; ?>" x2="448" y2="<?php echo $grid_y; ?>" />
+                    <?php endfor; ?>
+                  </g>
+                  <g fill="#6a6a6a" font-size="10" font-family="Segoe UI, sans-serif" text-anchor="end">
+                    <?php for ($grid_line = 0; $grid_line <= 4; $grid_line++): ?>
+                      <?php $grid_value = (int)round(($trend_scale_max / 4) * $grid_line); ?>
+                      <?php $grid_y = 153 - ($grid_line * 30); ?>
+                      <text x="35" y="<?php echo $grid_y; ?>"><?php echo $grid_value; ?></text>
+                    <?php endfor; ?>
+                  </g>
+                  <polyline
+                    points="<?php echo htmlspecialchars(implode(' ', $trend_points), ENT_QUOTES, 'UTF-8'); ?>"
+                    fill="none"
+                    stroke="#5c8a60"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                  <?php foreach ($monthly_assessments as $index => $month_row): ?>
+                    <?php
+                      $point_x = $trend_x_positions[$index];
+                      $point_y = 150 - (((int)$month_row['count'] / $trend_scale_max) * 120);
+                    ?>
+                    <circle cx="<?php echo $point_x; ?>" cy="<?php echo round($point_y, 1); ?>" r="4" fill="#5c8a60">
+                      <title><?php echo htmlspecialchars($month_row['label'] . ': ' . $month_row['count'] . ' assessments', ENT_QUOTES, 'UTF-8'); ?></title>
+                    </circle>
+                    <text x="<?php echo $point_x; ?>" y="177" fill="#3d3d3d" font-size="11" font-family="Segoe UI, sans-serif" text-anchor="middle">
+                      <?php echo htmlspecialchars($month_row['label'], ENT_QUOTES, 'UTF-8'); ?>
+                    </text>
+                  <?php endforeach; ?>
+                </svg>
+              <?php else: ?>
+                <p class="chart-empty">Assessment trend data is unavailable.</p>
+              <?php endif; ?>
             </div>
           </article>
 
           <article class="panel">
             <h2 class="panel-title">Risk Level Distribution</h2>
             <div class="donut-wrap">
-              <div class="donut" aria-label="Risk distribution donut chart"></div>
+              <div class="donut" role="img" aria-label="Risk level distribution: <?php echo $risk_total; ?> assessments" style="background: <?php echo htmlspecialchars($risk_donut_background, ENT_QUOTES, 'UTF-8'); ?>">
+                <div class="donut-total"><?php echo $risk_total; ?><small>assessments</small></div>
+              </div>
               <div class="legend">
-                <div class="legend-row">
-                  <span class="legend-label"><span class="legend-dot" style="background:#d9695d"></span>High</span>
-                  <span>30%</span>
-                </div>
-                <div class="legend-row">
-                  <span class="legend-label"><span class="legend-dot" style="background:#e2bf61"></span>Moderate</span>
-                  <span>50%</span>
-                </div>
-                <div class="legend-row">
-                  <span class="legend-label"><span class="legend-dot" style="background:#7ba889"></span>Low</span>
-                  <span>20%</span>
-                </div>
+                <?php foreach ($risk_distribution as $risk_name => $risk_count): ?>
+                  <?php $risk_percentage = $risk_total > 0 ? round(($risk_count / $risk_total) * 100) : 0; ?>
+                  <div class="legend-row">
+                    <span class="legend-label">
+                      <span class="legend-dot" style="background:<?php echo $risk_colors[$risk_name]; ?>"></span>
+                      <?php echo htmlspecialchars($risk_name, ENT_QUOTES, 'UTF-8'); ?>
+                    </span>
+                    <span><?php echo $risk_count; ?> (<?php echo $risk_percentage; ?>%)</span>
+                  </div>
+                <?php endforeach; ?>
+                <?php if ($risk_total === 0): ?>
+                  <p class="risk-empty">No risk level data available yet.</p>
+                <?php endif; ?>
               </div>
             </div>
           </article>
@@ -443,29 +603,35 @@ if ($assessment_table) {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>Batosai</td>
-                  <td>High</td>
-                  <td>18</td>
-                  <td>13</td>
-                  <td>May 10, 2026 10:00 AM</td>
-                  <td>Pending</td>
-                </tr>
-                <tr>
-                  <td>Marie</td>
-                  <td>Moderate</td>
-                  <td>11</td>
-                  <td>9</td>
-                  <td>May 9, 2026 2:30 PM</td>
-                  <td>Reviewed</td>
-                </tr>
+                <?php if (!empty($recent_assessments)): ?>
+                  <?php foreach ($recent_assessments as $recent_assessment): ?>
+                    <tr>
+                      <td>
+                        <a href="view_assessment.php?id=<?php echo (int)$recent_assessment['assessment_id']; ?>">
+                          <?php echo htmlspecialchars($recent_assessment['alias'] ?: ($recent_assessment['fullname'] ?: 'Student'), ENT_QUOTES, 'UTF-8'); ?>
+                        </a>
+                      </td>
+                      <td><?php echo htmlspecialchars($recent_assessment['risk_level'] ?? 'N/A', ENT_QUOTES, 'UTF-8'); ?></td>
+                      <td><?php echo (int)$recent_assessment['phq9_score']; ?></td>
+                      <td><?php echo (int)$recent_assessment['gad7_score']; ?></td>
+                      <td><?php echo !empty($recent_assessment['assessment_date']) ? htmlspecialchars(date('M d, Y g:i A', strtotime($recent_assessment['assessment_date'])), ENT_QUOTES, 'UTF-8') : 'N/A'; ?></td>
+                      <td><?php echo htmlspecialchars($recent_assessment['status'] ?? 'Pending', ENT_QUOTES, 'UTF-8'); ?></td>
+                    </tr>
+                  <?php endforeach; ?>
+                <?php else: ?>
+                  <tr>
+                    <td colspan="6" style="text-align:center; color:#777;">No assessment records found.</td>
+                  </tr>
+                <?php endif; ?>
               </tbody>
             </table>
           </div>
         </section>
 
         <?php if (!$assessment_table): ?>
-          <div class="alert-note">No assessments table was detected automatically. If your assessments table uses a different name or schema, update the detection list in <code>admin/dashboard.php</code> or tell me the table/column names and I will adjust the queries.</div>
+          <div class="alert-note">No assessments table was detected automatically. Check the assessment table configuration.</div>
+        <?php elseif ($dashboard_data_error !== ''): ?>
+          <div class="alert-note"><?php echo htmlspecialchars($dashboard_data_error, ENT_QUOTES, 'UTF-8'); ?></div>
         <?php endif; ?>
       </main>
     </div>

@@ -49,6 +49,8 @@ if ($result) {
       .filter-row input, .filter-row select { padding: 8px 10px; border: 1px solid #cfd7d1; border-radius: 8px; }
       button { padding: 9px 12px; border: 1px solid #cfd7d1; border-radius: 8px; background: #fff; cursor: pointer; }
       button#open-add { background: #5c8a60; border-color: #5c8a60; color: white; }
+      .verification-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+      .verification-actions form { margin: 0; }
       table { width: 100%; border-collapse: collapse; margin-top: 12px; }
       th, td { border-bottom: 1px solid #dfe4dc; padding: 12px 10px; text-align: left; }
       th { background: rgba(255,255,255,0.15); }
@@ -63,9 +65,6 @@ if ($result) {
         <nav class="nav" aria-label="Main navigation">
           <a class="nav-link" href="dashboard.php"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
           <a class="nav-link active" href="users.php"><span class="nav-icon">👥</span><span>Users</span></a>
-          <a class="nav-link" href="assessments.php"><span class="nav-icon">📝</span><span>Assessments</span></a>
-          <a class="nav-link" href="referrals.php"><span class="nav-icon">🔁</span><span>Referrals</span></a>
-          <a class="nav-link" href="reports.php"><span class="nav-icon">📊</span><span>Reports</span></a>
           <a class="nav-link" href="settings.php"><span class="nav-icon">⚙️</span><span>Settings</span></a>
           <a class="nav-link logout" href="../auth/logout.php"><span class="nav-icon">↩️</span><span>Logout</span></a>
         </nav>
@@ -73,8 +72,8 @@ if ($result) {
 
       <main class="main-content">
         <header class="page-header">
-          <h1 class="page-title">User Management</h1>
-          <button id="open-add">Add User</button>
+          <h1 class="page-title">User Management and Account Verification</h1>
+          <button id="open-add" type="button">Add User</button>
         </header>
 
         <section class="panel">
@@ -93,6 +92,7 @@ if ($result) {
             <label for="status">Status</label>
             <select id="status">
               <option value="">All</option>
+              <option value="pending">Pending verification</option>
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </select>
@@ -122,7 +122,12 @@ if ($result) {
                 <td><?= htmlspecialchars(ucfirst(strtolower($u['status'] ?? ''))) ?></td>
                 <td>
                   <button class="edit-btn" data-id="<?= $u['user_id'] ?>">Edit</button>
-                  <?php if (strtolower($u['status'] ?? '') === 'active'): ?>
+                  <?php if (strtolower($u['status'] ?? '') === 'pending'): ?>
+                    <span class="verification-actions">
+                      <button class="verification-btn" data-id="<?= $u['user_id'] ?>" data-action="verify">Approve</button>
+                      <button class="verification-btn" data-id="<?= $u['user_id'] ?>" data-action="reject">Reject</button>
+                    </span>
+                  <?php elseif (strtolower($u['status'] ?? '') === 'active'): ?>
                     <button class="toggle-status-btn" data-id="<?= $u['user_id'] ?>" data-action="deactivate">Deactivate</button>
                   <?php else: ?>
                     <button class="toggle-status-btn" data-id="<?= $u['user_id'] ?>" data-action="activate">Activate</button>
@@ -246,6 +251,28 @@ if ($result) {
           data.append('action', 'toggle');
           data.append('user_id', id);
           data.append('toggle_action', action);
+
+          const res = await fetch('user_actions.php', { method: 'POST', body: data });
+          const txt = await res.text();
+          if (res.ok) {
+            location.reload();
+          } else {
+            alert('Error: ' + txt);
+          }
+        });
+      });
+
+      document.querySelectorAll('.verification-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const action = btn.dataset.action;
+          const prompt = action === 'verify'
+            ? 'Approve this account and activate it?'
+            : 'Reject this account and mark it inactive?';
+          if (!window.confirm(prompt)) return;
+
+          const data = new FormData();
+          data.append('action', action);
+          data.append('user_id', btn.dataset.id);
 
           const res = await fetch('user_actions.php', { method: 'POST', body: data });
           const txt = await res.text();

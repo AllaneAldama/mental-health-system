@@ -80,10 +80,9 @@ Responsible for:
 
 - Dashboard
 - User Management
-- Assessment Management
-- Reports
-- Referral Management
-- System Settings
+- Settings
+
+The admin dashboard records login outcomes, admin account changes, password changes, and counselor referral activity in the `system_monitor_events` table. The table is created automatically on first use; the MySQL account needs permission to create tables. Activity counts cover the last 24 hours, and the dashboard shows the 20 most recent security and administrative events. Registration counts currently represent accounts created through Admin > Users because this project does not have a public signup handler.
 
 ---
 

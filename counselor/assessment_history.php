@@ -304,10 +304,6 @@ if ($assessment_table) {
       </aside>
 
         <main class="main-content">
-            <header class="page-header">
-                <h1 class="page-title">Assessment History</h1>
-                <p class="page-subtitle">Review completed and previously assessed student cases.</p>
-            </header>
 
             <section class="stats-grid">
                 <div class="stat-card">
