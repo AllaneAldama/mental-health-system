@@ -268,10 +268,6 @@ $specialization = $has_specialization ? ($profile['specialization'] ?? '') : '';
       </aside>
 
         <main class="main-content">
-            <header class="page-header">
-                <h1 class="page-title">My Profile</h1>
-                <p class="page-subtitle">Manage your counselor account details and security settings.</p>
-            </header>
 
             <?php if ($message !== ''): ?>
                 <div class="alert alert-success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>

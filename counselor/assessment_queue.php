@@ -442,10 +442,6 @@ $risk_options = ['High', 'Moderate', 'Low'];
       </aside>
 
         <main class="main-content">
-            <div class="page-header">
-                <h1 class="page-title">Assessment Queue</h1>
-                <p class="page-subtitle">View and manage pending assessments</p>
-            </div>
 
             <?php if ($assessment_table): ?>
                 <div class="queue-stats">

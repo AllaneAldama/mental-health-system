@@ -386,10 +386,6 @@ foreach ($monitored_students as $case) {
       </aside>
 
         <main class="main-content">
-            <header class="page-header">
-                <h1 class="page-title">Students Under Monitoring</h1>
-                <p class="page-subtitle">Track follow-up care, update notes, and monitor case progress.</p>
-            </header>
 
             <?php if ($message !== ''): ?>
                 <div class="alert alert-success"><?php echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8'); ?></div>

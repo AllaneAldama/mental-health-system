@@ -25,9 +25,9 @@ function column_exists($conn, $table, $column) {
 }
 
 // Get assessment ID from URL
-$assessment_id = isset($_GET['id']) ? trim($_GET['id']) : null;
+$assessment_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
-if (!$assessment_id) {
+if ($assessment_id < 1) {
     header("Location: assessment_queue.php");
     exit();
 }
@@ -47,33 +47,11 @@ foreach ($assessment_table_candidates as $cand) {
 
 $assessment = null;
 $student_info = null;
-$phq9_questions = [];
-$gad7_questions = [];
 $phq9_responses = [];
 $gad7_responses = [];
 $counselor_notes = '';
-
-$phq9_questions = [
-    1 => "Little interest or pleasure in doing things",
-    2 => "Feeling down, depressed, or hopeless",
-    3 => "Trouble falling or staying asleep, or sleeping too much",
-    4 => "Feeling tired or having little energy",
-    5 => "Poor appetite or overeating",
-    6 => "Feeling bad about yourself or that you're a failure",
-    7 => "Trouble concentrating on things",
-    8 => "Moving or speaking so slowly that others have noticed",
-    9 => "Thoughts that you'd be better off dead"
-];
-
-$gad7_questions = [
-    1 => "Feeling nervous, anxious, or on edge",
-    2 => "Not being able to stop or control worrying",
-    3 => "Worrying too much about different things",
-    4 => "Trouble relaxing",
-    5 => "Being so restless that it's hard to sit still",
-    6 => "Becoming easily annoyed or irritable",
-    7 => "Feeling afraid as if something awful might happen"
-];
+$workflow_message = '';
+$workflow_error = '';
 
 if ($assessment_table) {
     $cols = ['id' => 'assessment_id', 'student' => 'user_id', 'risk' => 'risk_level', 'phq' => 'phq9_score', 'gad' => 'gad7_score', 'submitted' => 'assessment_date', 'status' => 'status'];
@@ -103,7 +81,7 @@ if ($assessment_table) {
     }
 
     $id_col = $cols['id'];
-    $assessment_id_esc = mysqli_real_escape_string($conn, $assessment_id);
+    $assessment_id_esc = mysqli_real_escape_string($conn, (string)$assessment_id);
     $sql = "SELECT a.*, u.fullname, u.email, u.student_number FROM `$assessment_table` a LEFT JOIN user_data u ON u.user_id = a.user_id WHERE a.$id_col = '$assessment_id_esc' LIMIT 1";
     $res = mysqli_query($conn, $sql);
 
@@ -155,6 +133,45 @@ if ($assessment_table && $assessment) {
         if ($ref_res && mysqli_num_rows($ref_res) > 0) {
             $ref_row = mysqli_fetch_assoc($ref_res);
             $counselor_notes = $ref_row['remarks'] ?? '';
+        }
+    }
+}
+
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['action'])
+    && $_POST['action'] === 'mark_reviewed'
+    && $assessment
+) {
+    if (empty($cols['status']) || !column_exists($conn, $assessment_table, $cols['status'])) {
+        $workflow_error = 'This assessment cannot be marked reviewed because its status field is unavailable.';
+    } elseif (!in_array(strtolower((string)($assessment[$cols['status']] ?? 'pending')), ['pending', 'pending review'], true)) {
+        $workflow_error = 'Only pending assessments can be marked reviewed.';
+    } else {
+        $id_col = $cols['id'];
+        $status_col = $cols['status'];
+        $review_stmt = mysqli_prepare(
+            $conn,
+            "UPDATE `$assessment_table` SET `$status_col` = 'Reviewed' WHERE `$id_col` = ?"
+        );
+        if ($review_stmt) {
+            mysqli_stmt_bind_param($review_stmt, 'i', $assessment_id);
+            if (mysqli_stmt_execute($review_stmt)) {
+                $workflow_message = 'Assessment marked as reviewed. It is now eligible for referral scheduling.';
+                $refresh_sql = "SELECT a.*, u.fullname, u.email, u.student_number
+                                FROM `$assessment_table` a
+                                LEFT JOIN user_data u ON u.user_id = a.user_id
+                                WHERE a.$id_col = '$assessment_id_esc' LIMIT 1";
+                $refresh_res = mysqli_query($conn, $refresh_sql);
+                if ($refresh_res && mysqli_num_rows($refresh_res) > 0) {
+                    $assessment = mysqli_fetch_assoc($refresh_res);
+                }
+            } else {
+                $workflow_error = 'Unable to mark this assessment reviewed: ' . mysqli_stmt_error($review_stmt);
+            }
+            mysqli_stmt_close($review_stmt);
+        } else {
+            $workflow_error = 'Unable to prepare the assessment review update: ' . mysqli_error($conn);
         }
     }
 }
@@ -458,6 +475,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 <a href="assessment_queue.php" class="btn">Back to Queue</a>
             <?php else: ?>
 
+                <?php if ($workflow_message !== ''): ?>
+                    <div class="alert-note"><?php echo htmlspecialchars($workflow_message, ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php endif; ?>
+                <?php if ($workflow_error !== ''): ?>
+                    <div class="alert-error"><?php echo htmlspecialchars($workflow_error, ENT_QUOTES, 'UTF-8'); ?></div>
+                <?php endif; ?>
+
                 <div class="content-grid">
                     <!-- Student Information -->
                     <div class="card">
@@ -492,6 +516,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             <div class="info-value"><?php echo htmlspecialchars($assessment_id); ?></div>
                         </div>
 
+                        <div class="info-group">
+                            <div class="info-label">Status</div>
+                            <div class="info-value"><?php echo htmlspecialchars($assessment[$cols['status']] ?? 'Pending'); ?></div>
+                        </div>
+
                         <?php if (!empty($assessment[$cols['submitted']])): ?>
                             <div class="info-group">
                                 <div class="info-label">Submitted Date</div>
@@ -501,19 +530,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             </div>
                         <?php endif; ?>
 
-                        <?php if (!empty($assessment[$cols['status']])): ?>
-                            <div class="info-group">
-                                <div class="info-label">Status</div>
-                                <div class="info-value"><?php echo htmlspecialchars($assessment[$cols['status']]); ?></div>
-                            </div>
-                        <?php endif; ?>
                     </div>
 
                     <!-- Scores Summary -->
                     <div class="card">
                         <h2 class="card-title">📊 Assessment Scores</h2>
                         
-                        <?php if (!empty($assessment[$cols['phq']])): ?>
+                        <?php if (isset($assessment[$cols['phq']])): ?>
                             <div class="info-group">
                                 <div class="info-label">PHQ-9 Score</div>
                                 <div class="info-value">
@@ -532,7 +555,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             </div>
                         <?php endif; ?>
 
-                        <?php if (!empty($assessment[$cols['gad']])): ?>
+                        <?php if (isset($assessment[$cols['gad']])): ?>
                             <div class="info-group">
                                 <div class="info-label">GAD-7 Score</div>
                                 <div class="info-value">
@@ -566,31 +589,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <div class="card full-width">
                         <h2 class="card-title">📋 PHQ-9 Responses</h2>
                         <div class="responses-grid">
-                            <?php 
-                            if (!empty($assessment)) {
-                                for ($i = 1; $i <= 9; $i++) {
-                                    $response_key = 'phq9_q' . $i;
-                                    $response_value = $assessment[$response_key] ?? null;
-                                    
-                                    if ($response_value !== null) {
-                                        $response_labels = ['0' => 'Not at all', '1' => 'Several days', '2' => 'More than half the days', '3' => 'Nearly every day'];
-                                        $label = $response_labels[$response_value] ?? 'Unknown';
-                                        ?>
-                                        <div class="response-item">
-                                            <div class="response-question">
-                                                Q<?php echo $i; ?>. <?php echo htmlspecialchars($phq9_questions[$i]); ?>
-                                            </div>
-                                            <div class="response-answer">
-                                                <strong><?php echo htmlspecialchars($label); ?></strong> (Score: <?php echo htmlspecialchars($response_value); ?>)
-                                            </div>
-                                        </div>
-                                        <?php
-                                    }
-                                }
-                            }
-                            ?>
+                            <?php foreach ($phq9_responses as $question_number => $response): ?>
+                                <?php
+                                $score = (int)$response['score'];
+                                $response_labels = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
+                                $label = $response_labels[$score] ?? 'Unknown';
+                                ?>
+                                <div class="response-item">
+                                    <div class="response-question">
+                                        Q<?php echo (int)$question_number; ?>. <?php echo htmlspecialchars($response['question'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </div>
+                                    <div class="response-answer">
+                                        <strong><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></strong> (Score: <?php echo $score; ?>)
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                        <?php if (empty($assessment) || !isset($assessment['phq9_q1'])): ?>
+                        <?php if (empty($phq9_responses)): ?>
                             <p style="color: #999; text-align: center; padding: 20px;">No detailed PHQ-9 responses available</p>
                         <?php endif; ?>
                     </div>
@@ -599,31 +614,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <div class="card full-width">
                         <h2 class="card-title">📋 GAD-7 Responses</h2>
                         <div class="responses-grid">
-                            <?php 
-                            if (!empty($assessment)) {
-                                for ($i = 1; $i <= 7; $i++) {
-                                    $response_key = 'gad7_q' . $i;
-                                    $response_value = $assessment[$response_key] ?? null;
-                                    
-                                    if ($response_value !== null) {
-                                        $response_labels = ['0' => 'Not at all', '1' => 'Several days', '2' => 'More than half the days', '3' => 'Nearly every day'];
-                                        $label = $response_labels[$response_value] ?? 'Unknown';
-                                        ?>
-                                        <div class="response-item">
-                                            <div class="response-question">
-                                                Q<?php echo $i; ?>. <?php echo htmlspecialchars($gad7_questions[$i]); ?>
-                                            </div>
-                                            <div class="response-answer">
-                                                <strong><?php echo htmlspecialchars($label); ?></strong> (Score: <?php echo htmlspecialchars($response_value); ?>)
-                                            </div>
-                                        </div>
-                                        <?php
-                                    }
-                                }
-                            }
-                            ?>
+                            <?php foreach ($gad7_responses as $question_number => $response): ?>
+                                <?php
+                                $score = (int)$response['score'];
+                                $response_labels = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
+                                $label = $response_labels[$score] ?? 'Unknown';
+                                ?>
+                                <div class="response-item">
+                                    <div class="response-question">
+                                        Q<?php echo (int)$question_number; ?>. <?php echo htmlspecialchars($response['question'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </div>
+                                    <div class="response-answer">
+                                        <strong><?php echo htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?></strong> (Score: <?php echo $score; ?>)
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
-                        <?php if (empty($assessment) || !isset($assessment['gad7_q1'])): ?>
+                        <?php if (empty($gad7_responses)): ?>
                             <p style="color: #999; text-align: center; padding: 20px;">No detailed GAD-7 responses available</p>
                         <?php endif; ?>
                     </div>
@@ -645,6 +652,21 @@ This section is for:
                                 <a href="assessment_queue.php" class="btn" style="background: #a0a8a0;">Back to Queue</a>
                             </div>
                         </form>
+                        <?php if (in_array(strtolower((string)($assessment[$cols['status']] ?? 'pending')), ['pending', 'pending review'], true)): ?>
+                            <form method="POST" action="" style="margin-top: 12px;">
+                                <input type="hidden" name="action" value="mark_reviewed">
+                                <button type="submit" class="btn">Mark Assessment as Reviewed</button>
+                            </form>
+                        <?php elseif (strtolower((string)($assessment[$cols['status']] ?? '')) === 'reviewed'): ?>
+                            <p style="margin-top: 14px; color: #386641; font-weight: 600;">
+                                Reviewed — eligible for referral scheduling.
+                                <a href="referral.php" style="color: #386641; text-decoration: underline;">Go to Referrals</a>
+                            </p>
+                        <?php else: ?>
+                            <p style="margin-top: 14px; color: #666;">
+                                This assessment has already progressed to <?php echo htmlspecialchars($assessment[$cols['status']] ?? 'another status', ENT_QUOTES, 'UTF-8'); ?>.
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
 

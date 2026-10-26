@@ -56,15 +56,11 @@ $app_version = '1.0.0'; // bump if you track versions elsewhere
         <nav class="nav" aria-label="Main navigation">
           <a class="nav-link" href="dashboard.php"><span class="nav-icon">🏠</span><span>Dashboard</span></a>
           <a class="nav-link" href="users.php"><span class="nav-icon">👥</span><span>Users</span></a>
-          <a class="nav-link" href="assessments.php"><span class="nav-icon">📝</span><span>Assessments</span></a>
-          <a class="nav-link" href="referrals.php"><span class="nav-icon">🔁</span><span>Referrals</span></a>
-          <a class="nav-link" href="reports.php"><span class="nav-icon">📊</span><span>Reports</span></a>
           <a class="nav-link active" href="settings.php"><span class="nav-icon">⚙️</span><span>Settings</span></a>
           <a class="nav-link logout" href="../auth/logout.php"><span class="nav-icon">↩️</span><span>Logout</span></a>
         </nav>
       </aside>
       <main class="main-content">
-        <h1 class="page-title">Settings</h1>
 
       <section class="card">
         <h2>Change Password</h2>
