@@ -1,0 +1,585 @@
+
+/* =====================================================
+   ASSESSMENT REVIEW — READABLE RESPONSE LAYOUT
+   PTC Wellness • Counselor-friendly design
+   ===================================================== */
+
+.response-sections {
+    display: grid;
+    gap: 20px;
+    min-width: 0;
+}
+
+.response-section {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid #dfe9da;
+    border-radius: 15px;
+    background: #fff;
+}
+
+.response-section > h3 {
+    margin: 0;
+    padding: 16px 20px;
+    background: #f2f7ef;
+    color: #244b36;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.response-list {
+    padding: 0 20px;
+}
+
+.response-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 260px);
+    align-items: center;
+    gap: 22px;
+    padding: 20px 0;
+    border-bottom: 1px solid #e3ece0;
+    min-width: 0;
+}
+
+.response-row:last-child {
+    border-bottom: 0;
+}
+
+.response-question {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    min-width: 0;
+}
+
+.response-question p {
+    margin: 2px 0 0;
+    color: #293f30;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.question-number {
+    display: inline-flex;
+    width: 34px;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: #eef5e9;
+    color: #2f6941;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+/* Answer column */
+.response-answer {
+    justify-self: start;
+    min-width: 0;
+    max-width: 260px;
+}
+
+/* Likert answer: retain only the inner answer pill */
+.answer-pill {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    min-height: 44px;
+    padding: 10px 15px;
+    border: 1px solid #cddfc5;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.answer-pill-likert {
+    width: fit-content;
+    background: #f5f9f2;
+    color: #285d36;
+    white-space: normal;
+}
+
+.answer-pill-empty {
+    background: #fff8e9;
+    color: #785d2c;
+    font-weight: 600;
+}
+
+/* Written responses */
+.response-answer-written {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+}
+
+.written-response {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid #dce8d6;
+    border-radius: 11px;
+    background: #f9fbf8;
+    color: #293f30;
+}
+
+/* Display the full written response automatically */
+.written-response summary,
+.written-response-preview,
+.written-response-toggle {
+    display: none;
+}
+
+.written-response-full {
+    display: block;
+    width: 100%;
+    padding: 16px 18px;
+    color: #293f30;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/* Written-answer row spans the full width */
+.response-row:has(.written-response-full) {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+    padding: 22px 0;
+}
+
+.response-row:has(.written-response-full) .response-answer,
+.response-row:has(.written-response-full) .response-answer-written {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+    .response-row {
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
+        gap: 18px;
+    }
+
+    .response-question p {
+        font-size: 16px;
+    }
+
+    .answer-pill {
+        font-size: 15px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 760px) {
+    .response-sections {
+        gap: 16px;
+    }
+
+    .response-section > h3 {
+        padding: 15px 16px;
+        font-size: 17px;
+    }
+
+    .response-list {
+        padding: 0 15px;
+    }
+
+    .response-row {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 13px;
+        padding: 18px 0;
+    }
+
+    .response-question {
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .question-number {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+
+    .response-question p {
+        font-size: 16px;
+        line-height: 1.7;
+    }
+
+    .response-answer,
+    .response-answer-written {
+        justify-self: start;
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+    }
+
+    .answer-pill {
+        min-height: 42px;
+        padding: 9px 13px;
+        font-size: 15px;
+    }
+
+    .written-response-full {
+        padding: 15px;
+        font-size: 16px;
+        line-height: 1.75;
+    }
+}
+
+@media (max-width: 480px) {
+    .response-section > h3 {
+        font-size: 16px;
+    }
+
+    .response-question p {
+        font-size: 15px;
+    }
+
+    .answer-pill {
+        font-size: 14px;
+    }
+
+    .written-response-full {
+        font-size: 15px;
+    }
+}
+/* =====================================================
+   ASSESSMENT PRIORITY SUMMARY — PTC WELLNESS
+   ===================================================== */
+
+.priority-review-card {
+    overflow: hidden;
+}
+
+.priority-review-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin-bottom: 22px;
+}
+
+.priority-review-heading h2 {
+    margin: 0;
+    color: var(--review-text);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.priority-review-description {
+    margin: 6px 0 0;
+    color: var(--review-muted);
+    font-size: 1rem;
+    line-height: 1.7;
+}
+
+.priority-review-heading .priority-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 10px 17px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.priority-review-heading .priority-low {
+    border-color: #cfe5ce;
+    background: #eaf6e8;
+    color: #287443;
+}
+
+.priority-review-heading .priority-moderate {
+    border-color: #f1dfb6;
+    background: #fff5df;
+    color: #94610b;
+}
+
+.priority-review-heading .priority-high {
+    border-color: #f0caca;
+    background: #fff0ed;
+    color: #b43d32;
+}
+
+.priority-review-heading .priority-unrated {
+    border-color: #dfe5df;
+    background: #f1f3f0;
+    color: #68766d;
+}
+
+.priority-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.priority-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid var(--review-border);
+    border-radius: 14px;
+    background: #f8fbf6;
+}
+
+.priority-metric strong {
+    color: var(--review-text);
+    font-size: 1.45rem;
+    font-weight: 800;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.priority-scale {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.priority-scale > div {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--review-border);
+    border-radius: 12px;
+    background: #fff;
+}
+
+.priority-scale > div > span:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.priority-scale strong {
+    color: var(--review-text);
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.priority-scale small {
+    color: var(--review-muted);
+    font-size: 0.8rem;
+    line-height: 1.6;
+}
+
+.priority-scale-dot {
+    flex: 0 0 10px;
+    width: 10px;
+    height: 10px;
+    margin-top: 5px;
+    border-radius: 50%;
+}
+
+.priority-low-dot {
+    background: #39915a;
+}
+
+.priority-moderate-dot {
+    background: #d39a27;
+}
+
+.priority-high-dot {
+    background: #d65348;
+}
+
+.priority-disclaimer {
+    margin: 0;
+    padding: 15px 17px;
+    border: 1px solid var(--review-border);
+    border-radius: 12px;
+    background: #f5f8f2;
+    color: var(--review-muted);
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+
+@media (max-width: 760px) {
+    .priority-review-heading {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .priority-metrics {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .priority-scale {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .priority-metric {
+        padding: 16px;
+    }
+}
+/* Disabled referral action — preserve existing button appearance */
+.referral-disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    pointer-events: none;
+    user-select: none;
+}
+/* Review success notification */
+.review-success-card {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    position: relative;
+    margin: 0 0 24px;
+    padding: 22px 26px;
+    background: #f1f8ef;
+    border: 1px solid #cfe5c9;
+    border-left: 5px solid #398653;
+    border-radius: 16px;
+    box-shadow: 0 6px 20px rgba(37, 86, 53, 0.07);
+    animation: reviewSuccessEnter 0.45s ease-out both;
+}
+
+.review-success-icon {
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
+}
+
+.review-success-icon svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.success-circle {
+    fill: #e0f1dc;
+    stroke: #398653;
+    stroke-width: 2;
+    stroke-dasharray: 145;
+    stroke-dashoffset: 145;
+    animation: reviewCircleDraw 0.6s ease-out 0.1s forwards;
+}
+
+.success-check {
+    fill: none;
+    stroke: #287443;
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+    animation: reviewCheckDraw 0.4s ease-out 0.55s forwards;
+}
+
+.review-success-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.review-success-content h2 {
+    margin: 0 0 5px;
+    color: #245b37;
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.5;
+}
+
+.review-success-content p {
+    margin: 0;
+    color: #526e59;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.review-success-dismiss {
+    align-self: flex-start;
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+    color: #52735a;
+    font-size: 25px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.review-success-dismiss:hover {
+    color: #245b37;
+}
+
+@keyframes reviewSuccessEnter {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes reviewCircleDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes reviewCheckDraw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .review-success-card {
+        align-items: flex-start;
+        gap: 12px;
+        padding: 18px 14px;
+    }
+
+    .review-success-icon {
+        flex-basis: 44px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .review-success-content h2 {
+        font-size: 16px;
+    }
+
+    .review-success-content p {
+        font-size: 13px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .review-success-card,
+    .success-circle,
+    .success-check {
+        animation: none;
+    }
+
+    .success-circle,
+    .success-check {
+        stroke-dashoffset: 0;
+    }
+}

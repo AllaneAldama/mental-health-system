@@ -1,12 +1,16 @@
+
 <?php
+mysqli_report(MYSQLI_REPORT_OFF);
 
-$host = "localhost";
-$username = "root";
-$password = "";
-$database = "mental_health_system";
+$conn = mysqli_connect(
+    "localhost",
+    "root",
+    "",
+    "mental_health_system"
+);
 
-$conn = mysqli_connect($host, $username, $password, $database);
+$db_connection_error = null;
 
 if (!$conn) {
-    die("Database connection failed: " . mysqli_connect_error());
+    $db_connection_error = mysqli_connect_error();
 }
