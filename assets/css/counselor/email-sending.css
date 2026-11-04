@@ -1,0 +1,93 @@
+/* PTC Wellness | Email composer text + dedicated fixed send-status popup.
+   Scope: View Assessment & Monitoring email UI ONLY. */
+body:is(.assessment-review-page,.monitoring-page) .ptc-email-composer-greeting {
+  margin:8px 0 11px;color:#294b34;font-size:.83rem;font-weight:700;line-height:1.55;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-email-composer-signature {
+  display:flex;flex-direction:column;gap:3px;margin:12px 0 3px;padding-top:13px;
+  border-top:1px solid #e1eadf;color:#526d59;font-size:.77rem;line-height:1.55;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-email-composer-signature strong {
+  color:#234c34;font-size:.83rem;font-weight:800;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay[hidden],
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-return[hidden] {display:none!important}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay {
+  position:fixed;inset:0;z-index:2147483000;display:flex;align-items:center;justify-content:center;
+  width:100%;height:100dvh;padding:20px;background:rgba(12,31,20,.60);backdrop-filter:blur(5px);
+  box-sizing:border-box;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-dialog {
+  position:relative;box-sizing:border-box;width:min(100%,430px);max-height:calc(100dvh - 40px);
+  overflow:auto;overscroll-behavior:contain;padding:30px 27px 27px;text-align:center;
+  border:1px solid #d8e8d9;border-radius:20px;background:white;color:#254432;
+  box-shadow:0 26px 84px rgba(2,34,18,.24);outline:0;
+  animation:ptcMailStatusAppear .28s cubic-bezier(.2,.75,.25,1) both;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-icon {
+  display:grid;place-items:center;width:112px;height:106px;margin:0 auto 6px;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-icon svg {
+  display:block;width:104px;height:94px;max-width:100%;overflow:visible;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-check,
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-error-icon {display:none!important}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-success .ptc-mail-status-envelope,
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-error .ptc-mail-status-envelope {display:none!important}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-success .ptc-mail-status-check,
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-error .ptc-mail-status-error-icon {
+  display:block!important;animation:ptcMailStatusPop .32s ease-out both;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-sending .ptc-mail-envelope-body {
+  animation:ptcMailEnvelopeFloat 1.15s ease-in-out infinite;transform-origin:center;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-sending .ptc-mail-letter {
+  animation:ptcMailPaperFloat 1.15s ease-in-out infinite;transform-origin:center;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-eyebrow {
+  margin:4px 0 8px;color:#367b4e;font-size:.66rem;line-height:1.5;letter-spacing:.12em;font-weight:800;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-title {
+  margin:0;color:#1b422b;font-size:1.26rem;font-weight:800;line-height:1.35;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-description {
+  max-width:35ch;margin:10px auto 0;color:#65796c;font-size:.8rem;line-height:1.65;overflow-wrap:anywhere;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-track {
+  position:relative;width:100%;height:8px;margin:22px auto 0;border-radius:999px;
+  background:#e1ede3;overflow:hidden;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-fill {
+  display:block;width:0;height:100%;border-radius:inherit;background:#298350;
+  transition:width .32s ease;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-sending .ptc-mail-status-fill {
+  width:37%;animation:ptcMailStatusIndeterminate 1.35s ease-in-out infinite;transition:none;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-success .ptc-mail-status-fill {width:100%}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-error .ptc-mail-status-fill {
+  width:100%;background:#c26355;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-error .ptc-mail-status-title {color:#a74133}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-return {
+  display:inline-flex;align-items:center;justify-content:center;min-height:42px;margin-top:19px;
+  padding:10px 22px;border:0;border-radius:10px;background:#267447;color:white;
+  font:inherit;font-size:.79rem;font-weight:750;cursor:pointer;
+}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-return:hover {background:#185b37}
+body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-return:focus-visible {outline:3px solid #93bfa1;outline-offset:3px}
+@keyframes ptcMailStatusAppear {from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes ptcMailStatusPop {from{transform:scale(.68);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes ptcMailEnvelopeFloat {0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes ptcMailPaperFloat {0%,100%{transform:translateY(0)}50%{transform:translateY(-13px)}}
+@keyframes ptcMailStatusIndeterminate {0%{transform:translateX(-115%)}55%{transform:translateX(135%)}100%{transform:translateX(315%)}}
+@media(max-width:480px){
+ body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay {padding:13px}
+ body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-dialog {width:100%;max-height:calc(100dvh - 26px);padding:26px 21px 24px;border-radius:17px}
+ body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-title {font-size:1.16rem}
+}
+@media(prefers-reduced-motion:reduce){
+ body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay *,
+ body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-dialog {animation:none!important;transition:none!important}
+ body:is(.assessment-review-page,.monitoring-page) .ptc-mail-status-overlay.is-sending .ptc-mail-status-fill {width:70%}
+}

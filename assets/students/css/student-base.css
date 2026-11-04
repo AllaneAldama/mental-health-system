@@ -1,0 +1,18 @@
+/* =========================================
+   PTC STUDENT MODULE — SHARED BASE STYLES
+   Shared reset and typography defaults.
+========================================= */
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: #FAFBF7;
+    color: #2C2C2C;
+}

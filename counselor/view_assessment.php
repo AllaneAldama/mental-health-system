@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../includes/counselor_session.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/counselor/email-communication.php';
 
 if (
     !isset($_SESSION['role_type']) ||
@@ -206,7 +207,7 @@ if ($assessment_table) {
     $user_col = va_first_column(
         $conn,
         $assessment_table,
-        ['user_id', 'student_id']
+        ['student_id']
     );
 
     $date_col = va_first_column(
@@ -239,8 +240,8 @@ if ($assessment_table) {
                        u.program AS student_program,
                        u.year_level AS student_year_level
                 FROM `{$assessment_table}` a
-                LEFT JOIN user_data u
-                    ON u.user_id = a.`{$user_col}`
+                LEFT JOIN student_profiles u
+                    ON u.student_id = a.`{$user_col}`
                 WHERE a.`{$id_col}` = ?
                 LIMIT 1";
 
@@ -480,44 +481,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assessment) {
             exit();
         }
 
-        require_once __DIR__ . '/../config/email.php';
-
-        $recipient_name = trim(
-            (string)($assessment['student_alias'] ?? '')
-        );
-
-        if ($recipient_name === '') {
-            $recipient_name = 'Student';
-        }
-
-        // Get the currently logged-in counselor's name.
-        $counselor_name = trim(
-            (string)($_SESSION['fullname'] ?? 'PTC Wellness Guidance Office')
-        );
-
-        // Build the shared PTC WELLNESS branded HTML email.
-        $email_html = buildPTCEmailTemplate(
-            $recipient_name,
-            $email_message,
-            'ptc_wellness_logo',
-            $counselor_name
-        );
-
-        // Plain-text alternative includes the same personalized greeting and signature.
-        $plain_email_message = "Dear {$recipient_name},\n\n" .
-            $email_message .
-            "\n\nBest regards,\n{$counselor_name}\nPTC Wellness Guidance Office";
-
-        // Logo is stored in the project's assets/images directory.
-        $email_logo_path = __DIR__ . '/../assets/images/brainalter.png';
-
+        $recipient_name = trim((string)($assessment['student_alias'] ?? '')) ?: 'Student';
+        $counselor_name_for_email = ptcCounselorMailSenderName($conn);
+        $email_content = ptcCounselorMailContent($recipient_name, $email_message, $counselor_name_for_email);
         $send_result = sendSystemEmail(
             $recipient,
             $recipient_name,
             $subject,
-            $plain_email_message,
-            $email_html,
-            $email_logo_path
+            $email_content['plain'],
+            $email_content['html'],
+            $email_content['logo']
         );
 
         if (!empty($send_result['success'])) {
@@ -726,7 +699,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assessment) {
                 }
 
                 mysqli_stmt_close($update_stmt);
-                mysqli_stmt_close($update_stmt);
 
                 // Release the review lock after successfully marking as Reviewed.
                 $release_lock = mysqli_prepare(
@@ -737,6 +709,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assessment) {
                     AND lock_token = ?"
                 );
 
+                if (!$release_lock) {
+                    throw new Exception('Unable to prepare review lock release.');
+                }
+
                 mysqli_stmt_bind_param(
                     $release_lock,
                     'iis',
@@ -745,16 +721,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $assessment) {
                     $lock_token
                 );
 
-                mysqli_stmt_execute($release_lock);
+                if (!mysqli_stmt_execute($release_lock)) {
+                    mysqli_stmt_close($release_lock);
+                    throw new Exception('Unable to release review lock.');
+                }
+
                 mysqli_stmt_close($release_lock);
-
-                mysqli_commit($conn);
-
-                header(
-                    "Location: view_assessment.php?id=" .
-                    (int)$assessment_id . "&reviewed=1"
-                );
-                exit();
 
                 mysqli_commit($conn);
 
@@ -780,16 +752,15 @@ $status = $status_col
 
 $is_reviewed = va_status($status) === 'reviewed';
 
+$has_existing_referral = false;
 $has_scheduled_appointment = false;
 
 if (
     $assessment &&
     $is_reviewed &&
     va_table_exists($conn, 'referral_data') &&
-    va_table_exists($conn, 'schedule_data') &&
     va_column_exists($conn, 'referral_data', 'assessment_id') &&
-    va_column_exists($conn, 'referral_data', 'referral_id') &&
-    va_column_exists($conn, 'schedule_data', 'referral_id')
+    va_column_exists($conn, 'referral_data', 'referral_id')
 ) {
     $referral_lookup = mysqli_prepare(
         $conn,
@@ -816,9 +787,14 @@ if (
         mysqli_stmt_close($referral_lookup);
 
         if ($existing_referral && !empty($existing_referral['referral_id'])) {
+            $has_existing_referral = true;
             $referral_id_for_schedule =
                 (int) $existing_referral['referral_id'];
 
+            if (
+                va_table_exists($conn, 'schedule_data') &&
+                va_column_exists($conn, 'schedule_data', 'referral_id')
+            ) {
             $schedule_lookup = mysqli_prepare(
                 $conn,
                 "SELECT schedule_id
@@ -845,6 +821,7 @@ if (
 
                 $has_scheduled_appointment = (bool) $existing_schedule;
             }
+            }
         }
     }
 }
@@ -860,7 +837,7 @@ $submitted_label = $submitted_at && strtotime($submitted_at)
 
 
 
-$counselor_name = $_SESSION['fullname'] ?? 'Counselor';
+$counselor_name = ptcCounselorMailSenderName($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -873,160 +850,16 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    <link rel="stylesheet" href="../assets/css/assessment-review.css">
-
-    <style>
-.student-overview-actions {
-    display: flex;
-    flex-direction: row-reverse;
-    align-items: center;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-left: auto;
-    align-self: center;
-}
-
-.student-overview-actions .review-status,
-.student-overview-actions .schedule-referral-top-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 48px;
-    box-sizing: border-box;
-    margin: 0;
-    line-height: 1.4;
-}
-
-.schedule-referral-top-button {
-    gap: 8px;
-    white-space: nowrap;
-    text-decoration: none;
-}
-
-@media (max-width: 700px) {
-    .student-overview-actions {
-        width: 100%;
-        margin: 18px 0 0;
-        justify-content: flex-start;
-        align-items: center;
-        flex-direction: row-reverse;
-        gap: 10px;
-    }
-}
-
-@media (max-width: 420px) {
-    .student-overview-actions {
-        align-items: stretch;
-        flex-direction: column;
-    }
-
-    .student-overview-actions .review-status,
-    .student-overview-actions .schedule-referral-top-button {
-        width: 100%;
-    }
-}
-
-.notes-editor-wrap{border:1px solid #d5e4d0;border-radius:14px;overflow:hidden;background:#fff}
-.notes-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:7px;padding:10px 12px;border-bottom:1px solid #e3ebdf;background:#f5f8f2}
-.notes-toolbar button{min-width:36px;min-height:34px;padding:6px 10px;border:1px solid #d5e4d0;border-radius:8px;background:#fff;color:#285d3c;font:inherit;font-weight:600;cursor:pointer}
-.notes-toolbar button:hover,.notes-toolbar button:focus-visible{background:#eaf3e5;outline:2px solid #6d9874;outline-offset:1px}
-.notes-toolbar button.is-active,.notes-toolbar button[aria-pressed="true"]{background:#d7ead0;border-color:#39764d;color:#174b2e;box-shadow:inset 0 0 0 1px #39764d}
-.notes-toolbar button[data-command="bold"].is-active{font-weight:900}
-.notes-toolbar button[data-command="italic"].is-active{font-style:italic}
-.notes-toolbar button[data-command="underline"].is-active{text-decoration:underline;text-decoration-thickness:2px}
-.notes-editor{min-height:240px;max-height:70vh;overflow-y:auto;padding:16px 18px;outline:none;color:#244236;font:inherit;line-height:1.7;resize:vertical}
-.notes-editor:empty::before{content:attr(data-placeholder);color:#89968d;pointer-events:none}
-.notes-editor ul,.notes-editor ol{padding-left:26px}
-.notes-editor p{margin:0 0 10px}
-.notes-save-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(17,35,25,.45)}
-.notes-save-dialog{width:min(100%,420px);padding:30px;border:1px solid #dce8d6;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.2);text-align:center}
-.notes-save-icon{display:grid;place-items:center;width:58px;height:58px;margin:0 auto 14px;border-radius:50%;background:#e8f5e7;color:#287345;font-size:30px;font-weight:700}
-.notes-save-dialog h2{margin:0 0 8px;color:#214b35;font-size:22px}
-.notes-save-dialog p{margin:0 0 20px;color:#617268}
-.notes-save-dialog button{min-width:110px;padding:11px 22px;border:0;border-radius:10px;background:#39764d;color:#fff;font:inherit;font-weight:700;cursor:pointer}
-
-.email-modal-overlay{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(17,35,25,.48)}
-.email-modal-overlay.is-open{display:flex}
-.email-modal-card{width:min(100%,720px);max-height:92vh;overflow:auto;padding:30px;border:1px solid #dce8d6;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.2)}
-.email-modal-card h2{margin:0 0 8px;color:#214b35;font-size:22px}
-.email-modal-card p{color:#617268}
-.email-modal-field{display:grid;gap:6px;margin:14px 0}
-.email-modal-field label{font-weight:600;color:#244b37}
-.email-modal-field input,.email-modal-field textarea{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #cbd9c8;border-radius:9px;font:inherit;color:#244236}
-.email-modal-field textarea{min-height:190px;resize:vertical}
-.email-modal-field select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd9c8;border-radius:9px;background:#fff;color:#244236;font:inherit}
-.email-template-help{margin:4px 0 14px;color:#68796e;font-size:13px;line-height:1.5}
-@media(max-width:600px){.email-modal-overlay{padding:12px}.email-modal-card{padding:20px;width:100%}.email-modal-field textarea{min-height:160px}}
-.email-modal-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
-.email-modal-actions button{padding:11px 18px;border:0;border-radius:9px;background:#39764d;color:#fff;font:inherit;font-weight:700;cursor:pointer}
-.email-modal-actions .email-cancel{background:#edf2eb;color:#244b37}
-.email-send-button{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:10px 16px;border:0;border-radius:10px;background:#39764d;color:#fff;font:inherit;font-weight:600;cursor:pointer}
-.email-send-button:disabled{opacity:.65;cursor:wait}
-            </style>
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-base.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/counselor-layout.css') ?: 0) ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/view-assessment.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/view-assessment.css') ?: 0) ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/view-assessment-mobile.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/view-assessment-mobile.css') ?: 0) ?>" media="(max-width: 900px)">
+    <link rel="stylesheet" href="../assets/css/counselor/email-sending.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/email-sending.css') ?: 0) ?>">
 </head>
-<body class="counselor-page">
-<div class="app-shell">
-
-    <aside class="sidebar">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32">
-                    <path d="M16 27V15"></path>
-                    <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                    <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-                </svg>
-            </span>
-            <span class="brand-copy">
-                <strong class="brand-name">PTC Wellness</strong>
-                <small class="brand-tagline">Mental Health &amp; Well-being</small>
-            </span>
-        </a>
-
-        <nav class="nav" aria-label="Counselor navigation">
-            <a class="nav-link" href="dashboard.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
-                Dashboard
-            </a>
-
-            <a class="nav-link active" href="assessment_queue.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><path d="m3 6 1 1 2-2m-3 7 1 1 2-2m-3 7 1 1 2-2"/></svg></span>
-                Assessments Queue
-            </a>
-
-            <a class="nav-link" href="monitoring.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 12s3.2-7 9-7 9 7 9 7-3.2 7-9 7-9-7-9-7Z"/><circle cx="12" cy="12" r="3"/></svg></span>
-                Monitoring
-            </a>
-
-            <a class="nav-link" href="referral.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10M5 5v14h14"/></svg></span>
-                Referral
-            </a>
-
-            <a class="nav-link" href="assessment_history.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-                Assessment History
-            </a>
-
-            <a class="nav-link" href="profile.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
-                Profile
-            </a>
-
-            <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="m10 17 5-5-5-5M15 12H3"/><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg></span>
-                Logout
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <strong>Well-being matters.</strong>
-            <span>Supporting a healthier campus, one step at a time.</span>
-        </div>
-    </aside>
-
+<body class="counselor-page assessment-review-page">
+<?php include __DIR__ . '/../includes/counselor/sidebar.php'; ?>
+<div class="counselor-workspace">
+    <?php include __DIR__ . '/../includes/counselor/topbar.php'; ?>
     <main class="main-content">
         <header class="page-header">
             <div>
@@ -1037,9 +870,9 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
 
             <div class="header-right">
                 <div class="datetime-card">
-                    <span id="current-date">Loading date...</span>
-                    <span class="datetime-divider"></span>
-                    <span id="current-time">Loading time...</span>
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span id="current-date">Loading date...</span></span>
+                    <span class="datetime-divider" aria-hidden="true"></span>
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span id="current-time">Loading time...</span></span>
                 </div>
                 <div class="header-status"><span class="status-dot"></span>Counselor Portal</div>
             </div>
@@ -1106,7 +939,7 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
                 </div>
 
                 <div class="student-overview-actions">
-                    <span class="review-status <?= $is_reviewed ? 'review-status-done' : 'review-status-waiting' ?>">
+                    <span id="assessmentReviewStatus" class="review-status <?= $is_reviewed ? 'review-status-done' : 'review-status-waiting' ?>">
                         <span class="queue-status-dot"></span><?= va_escape($status) ?>
                     </span>
 
@@ -1117,29 +950,23 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
                         id="openAssessmentEmail"
                         data-recipient="<?= va_escape($student['email']) ?>"
                         data-student-name="<?= va_escape($student['fullname'] ?: $student['name']) ?>"
+                        data-student-alias="<?= va_escape(trim((string)($assessment['student_alias'] ?? '')) ?: 'Student') ?>"
                         data-counselor-name="<?= va_escape($counselor_name) ?>"
                     >Send Email</button>
                     <?php endif; ?>
 
-                <?php if ($is_reviewed && $has_scheduled_appointment): ?>
-                    <span
-                        class="review-button review-button-outline schedule-referral-top-button"
-                        aria-label="Appointment already scheduled"
-                        aria-disabled="true"
-                        style="cursor: default;"
-                    >
-                        <span aria-hidden="true">✓</span>
-                        Scheduled
-                    </span>
-                <?php elseif ($is_reviewed): ?>
-                    <a
-                        href="referral.php?assessment_id=<?= (int)$assessment_id ?>"
-                        class="review-button review-button-outline schedule-referral-top-button"
-                    >
-                        <span aria-hidden="true">▦</span>
-                        Schedule for Referral
-                    </a>
-                <?php endif; ?>
+                <span id="assessmentWorkflowIndicator"
+                    data-reviewed="<?= $is_reviewed ? '1' : '0' ?>"
+                    data-referral="<?= $has_existing_referral ? '1' : '0' ?>"
+                    data-scheduled="<?= $has_scheduled_appointment ? '1' : '0' ?>">
+                    <?php if ($is_reviewed && $has_scheduled_appointment): ?>
+                        <span class="review-button review-button-outline schedule-referral-top-button" aria-label="Student appointment scheduled" aria-disabled="true" style="cursor:default"><span aria-hidden="true">✓</span> Scheduled</span>
+                    <?php elseif ($is_reviewed && $has_existing_referral): ?>
+                        <span class="review-button review-button-outline schedule-referral-top-button" aria-label="Referral already created" aria-disabled="true" style="cursor:default"><span aria-hidden="true">✓</span> Referral Already Created</span>
+                    <?php elseif ($is_reviewed): ?>
+                        <button type="button" id="openAssessmentReferralModal" class="review-button review-button-outline schedule-referral-top-button"><span aria-hidden="true">▦</span> Schedule for Referral</button>
+                    <?php endif; ?>
+                </span>
 
                 </div>
                 
@@ -1226,16 +1053,124 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
                 </p>
             </section>
 
-            <section class="review-card">
+            <section class="review-card responses-launch-card" aria-labelledby="responsesLaunchHeading">
                 <div class="review-section-heading">
-                    <div class="section-icon">☷</div>
+                    <div class="section-icon" aria-hidden="true">☷</div>
                     <div>
-                        <h2>Needs Assessment Responses</h2>
-                        <p>Review each response and its associated question.</p>
+                        <h2 id="responsesLaunchHeading">Needs Assessment Responses</h2>
+                        <p>Open the full questionnaire in a separate, scrollable window.</p>
                     </div>
                     <span class="response-count"><?= count($responses) ?> responses</span>
                 </div>
+                <div class="responses-launch-actions">
+                    <p>Read the student's questions and answers without losing your place in the assessment review.</p>
+                    <button type="button" id="openNeedsAssessmentResponses" class="review-button responses-open-button" aria-haspopup="dialog" aria-controls="needsAssessmentResponsesDialog">
+                        View All Responses <span aria-hidden="true">↗</span>
+                    </button>
+                </div>
+            </section>
 
+            <section class="review-card">
+                <div class="review-section-heading">
+                    <div class="section-icon">✎</div>
+                    <div>
+                        <h2>Counselor Notes</h2>
+                        <p>Record observations, decisions, and follow-up plans.</p>
+                    </div>
+                </div>
+
+                <form id="counselorNotesForm" method="POST" action="view_assessment.php?id=<?= (int)$assessment_id ?>">
+                    <input type="hidden" name="action" value="save_notes">
+                    <input type="hidden" id="counselor_notes" name="counselor_notes" value="">
+                    <label class="notes-label" for="counselorNotesEditor">Review notes</label>
+                    <div class="notes-editor-wrap">
+                        <div class="notes-toolbar" role="toolbar" aria-label="Counselor notes formatting">
+                            <button type="button" data-command="bold" aria-label="Bold" title="Bold"><strong>B</strong></button>
+                            <button type="button" data-command="italic" aria-label="Italic" title="Italic"><em>I</em></button>
+                            <button type="button" data-command="underline" aria-label="Underline" title="Underline"><u>U</u></button>
+                            <button type="button" data-command="insertUnorderedList" aria-label="Bulleted list" title="Bulleted list">• List</button>
+                            <button type="button" data-command="insertOrderedList" aria-label="Numbered list" title="Numbered list">1. List</button>
+                            
+                        </div>
+                        <div id="counselorNotesEditor" class="notes-editor" contenteditable="true"
+                             role="textbox" aria-multiline="true"
+                             data-placeholder="Document relevant observations, the student's stated needs, agreed next steps, and any referral considerations..."><?= va_sanitize_notes($notes) ?></div>
+                    </div>
+                    <div class="notes-footer">
+                        <span>Keep notes factual, respectful, and relevant to student support.</span>
+                        <button type="submit" class="review-button review-button-secondary">Save Notes</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="review-card action-card">
+                <div>
+                    <h2>Review Actions</h2>
+                    <p>Complete the assessment review before proceeding to referral.</p>
+                </div>
+
+                <div class="review-actions">
+                    <?php if (!$is_reviewed): ?>
+                <form
+                    method="POST"
+                    action="view_assessment.php?id=<?= (int)$assessment_id ?>"
+                    id="markReviewedForm"
+                >
+                    <input type="hidden" name="action" value="mark_reviewed">
+
+                    <input
+                        type="hidden"
+                        name="lock_token"
+                        id="reviewLockToken"
+                        value=""
+                    >
+
+                    <button type="submit" class="review-button" id="markReviewedButton">
+                        <span>✓</span>
+                        Mark as Reviewed
+                    </button>
+                </form>
+                    <?php else: ?>
+                        <span class="review-complete">
+                            ✓ Assessment Reviewed
+                        </span>
+                    <?php endif; ?>
+
+                    <a
+                        href="assessment_queue.php"
+                        class="review-button review-button-muted"
+                    >
+                        Back to Queue
+                    </a>
+                </div>
+
+                <p class="review-disclaimer">
+                    The Needs Assessment Survey is not a medical diagnosis.
+                    Final support and referral decisions remain with the counselor.
+                </p>
+            </section>
+
+        <?php endif; ?>
+    </main>
+    <?php include __DIR__ . '/../includes/counselor/footer.php'; ?>
+</div>
+
+<?php if ($assessment): ?>
+<dialog id="needsAssessmentResponsesDialog" class="va-responses-dialog" aria-labelledby="vaResponsesDialogTitle" aria-describedby="vaResponsesDialogDescription">
+    <div class="va-responses-dialog-shell">
+        <div class="va-responses-dialog-header">
+            <div class="va-responses-dialog-title">
+                <p class="va-responses-dialog-eyebrow">PTC WELLNESS · ASSESSMENT REVIEW</p>
+                <h2 id="vaResponsesDialogTitle">Needs Assessment Responses</h2>
+                <p id="vaResponsesDialogDescription">Scroll through the complete questionnaire while keeping your place on the review page.</p>
+            </div>
+            <button type="button" id="closeNeedsAssessmentResponses" class="va-responses-dialog-close" aria-label="Close assessment responses">&times;</button>
+        </div>
+        <div class="va-responses-dialog-toolbar">
+            <span class="va-responses-dialog-count"><?= count($responses) ?> responses</span>
+            <span class="va-responses-dialog-hint">Scroll within this window to see every answer</span>
+        </div>
+        <div class="va-responses-dialog-body" id="vaResponsesDialogScroll" tabindex="0" aria-label="Scrollable assessment responses">
                 <?php if (!$responses): ?>
                     <div class="review-empty">
                         <h3>No response details found</h3>
@@ -1323,98 +1258,14 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
                         <?php endforeach; ?>
                     </div>
                 <?php endif; ?>
-            </section>
+        </div>
+        <div class="va-responses-dialog-footer">
+            <span>Responses are shown as submitted by the student.</span>
+            <button type="button" id="closeNeedsAssessmentResponsesFooter" class="review-button review-button-secondary">Close Responses</button>
+        </div>
+    </div>
+</dialog>
 
-            <section class="review-card">
-                <div class="review-section-heading">
-                    <div class="section-icon">✎</div>
-                    <div>
-                        <h2>Counselor Notes</h2>
-                        <p>Record observations, decisions, and follow-up plans.</p>
-                    </div>
-                </div>
-
-                <form id="counselorNotesForm" method="POST" action="view_assessment.php?id=<?= (int)$assessment_id ?>">
-                    <input type="hidden" name="action" value="save_notes">
-                    <input type="hidden" id="counselor_notes" name="counselor_notes" value="">
-                    <label class="notes-label" for="counselorNotesEditor">Review notes</label>
-                    <div class="notes-editor-wrap">
-                        <div class="notes-toolbar" role="toolbar" aria-label="Counselor notes formatting">
-                            <button type="button" data-command="bold" aria-label="Bold" title="Bold"><strong>B</strong></button>
-                            <button type="button" data-command="italic" aria-label="Italic" title="Italic"><em>I</em></button>
-                            <button type="button" data-command="underline" aria-label="Underline" title="Underline"><u>U</u></button>
-                            <button type="button" data-command="insertUnorderedList" aria-label="Bulleted list" title="Bulleted list">• List</button>
-                            <button type="button" data-command="insertOrderedList" aria-label="Numbered list" title="Numbered list">1. List</button>
-                            
-                        </div>
-                        <div id="counselorNotesEditor" class="notes-editor" contenteditable="true"
-                             role="textbox" aria-multiline="true"
-                             data-placeholder="Document relevant observations, the student's stated needs, agreed next steps, and any referral considerations..."><?= va_sanitize_notes($notes) ?></div>
-                    </div>
-                    <div class="notes-footer">
-                        <span>Keep notes factual, respectful, and relevant to student support.</span>
-                        <button type="submit" class="review-button review-button-secondary">Save Notes</button>
-                    </div>
-                </form>
-            </section>
-
-            <section class="review-card action-card">
-                <div>
-                    <h2>Review Actions</h2>
-                    <p>Complete the assessment review before proceeding to referral.</p>
-                </div>
-
-                <div class="review-actions">
-                    <?php if (!$is_reviewed): ?>
-                <form
-                    method="POST"
-                    action="view_assessment.php?id=<?= (int)$assessment_id ?>"
-                    id="markReviewedForm"
-                >
-                    <input type="hidden" name="action" value="mark_reviewed">
-
-                    <input
-                        type="hidden"
-                        name="lock_token"
-                        id="reviewLockToken"
-                        value=""
-                    >
-
-                    <button type="submit" class="review-button" id="markReviewedButton">
-                        <span>✓</span>
-                        Mark as Reviewed
-                    </button>
-                </form>
-                    <?php else: ?>
-                        <span class="review-complete">
-                            ✓ Assessment Reviewed
-                        </span>
-                    <?php endif; ?>
-
-                    <a
-                        href="assessment_queue.php"
-                        class="review-button review-button-muted"
-                    >
-                        Back to Queue
-                    </a>
-                </div>
-
-                <p class="review-disclaimer">
-                    The Needs Assessment Survey is not a medical diagnosis.
-                    Final support and referral decisions remain with the counselor.
-                </p>
-            </section>
-
-        <?php endif; ?>
-
-        <footer class="page-footer">
-            <span>PTC Wellness · Counselor Portal</span>
-            <span>Confidential student information — handle with care.</span>
-        </footer>
-    </main>
-</div>
-
-<?php if ($assessment): ?>
 <div class="email-modal-overlay" id="assessmentEmailModal" aria-hidden="true">
     <div class="email-modal-card" role="dialog" aria-modal="true" aria-labelledby="assessmentEmailTitle">
         <h2 id="assessmentEmailTitle">Send Email to Student</h2>
@@ -1435,7 +1286,7 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
                     <option value="student_support">Student Support</option>
                     <option value="custom">Custom Message</option>
                 </select>
-                <small class="email-template-help">Choose a professional starting format. The student's name and counselor signature are added automatically to the email. You can edit the subject and message before sending.</small>
+                <small class="email-template-help">Choose a professional format. The student's alias and your counselor name are added automatically as the greeting and signature. Edit only the message body.</small>
             </div>
             <div class="email-modal-field">
                 <label for="assessmentEmailSubject">Subject</label>
@@ -1467,6 +1318,7 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
 <?php endif; ?>
 
 
+<script src="../assets/js/counselor/email-sending.js?v=<?= (int) (@filemtime(__DIR__ . '/../assets/js/counselor/email-sending.js') ?: 0) ?>"></script>
 <script>
 (function () {
     const openButton = document.getElementById('openAssessmentEmail');
@@ -1480,6 +1332,9 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
     const template = document.getElementById('assessmentEmailTemplate');
     const feedback = document.getElementById('assessmentEmailFeedback');
     const submit = document.getElementById('submitAssessmentEmail');
+    const emailUI = window.PTCEmailSending?.attach({form, message, feedback, submit, student: openButton.dataset.studentAlias, counselor: openButton.dataset.counselorName});
+    let sending = false;
+    let closeAfterSuccess = null;
 
     // Messages contain the body only. The shared email layout adds
     // the personalized student greeting and counselor signature.
@@ -1490,7 +1345,7 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
         },
         appointment_invitation: {
             subject: 'Invitation to Arrange a Counseling Appointment | PTC Wellness',
-            message: 'The PTC Wellness Guidance Office would like to invite you to arrange a counseling appointment. The purpose of the meeting is to provide an opportunity for you to discuss any concerns, questions, or support needs in a private and respectful setting.\n\nPlease reply to this email with your available days and times. Our office will coordinate with you to confirm a suitable schedule.\n\nThank you, and we look forward to hearing from you.'
+            message: 'The PTC Wellness Guidance Office would like to invite you to arrange a counseling appointment. The purpose of the meeting is to provide an opportunity for you to discuss any concerns, questions, or support needs in a private and respectful setting.\n\nIf you would like to meet, please reply with your preferred days and times. We will confirm the details before any appointment is considered scheduled.\n\nThank you, and we look forward to hearing from you.'
         },
         appointment_reminder: {
             subject: 'Reminder: PTC Wellness Counseling Appointment',
@@ -1523,11 +1378,17 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
     template.addEventListener('change', applyTemplate);
 
     function closeModal() {
+        if (sending) return;
+        if (closeAfterSuccess !== null) window.clearTimeout(closeAfterSuccess);
+        closeAfterSuccess = null;
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
+        emailUI?.reset();
     }
     openButton.addEventListener('click', function () {
         recipient.value = openButton.dataset.recipient || '';
+        emailUI?.setNames(openButton.dataset.studentAlias || 'Student', openButton.dataset.counselorName || 'PTC Wellness Guidance Counselor');
+        emailUI?.reset();
         template.value = 'general';
         applyTemplate();
         feedback.textContent = '';
@@ -1545,30 +1406,31 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
     });
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
+        if (sending || submit.disabled) return;
+        sending = true;
         submit.disabled = true;
-        submit.textContent = 'Sending...';
+        submit.textContent = 'Sending…';
+        const payload = new FormData(form);
         feedback.textContent = '';
+        emailUI?.start();
         try {
             const response = await fetch(window.location.href, {
                 method: 'POST',
-                body: new FormData(form),
+                body: payload,
                 headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
                 credentials: 'same-origin'
             });
             const raw = await response.text();
             let result;
             try { result = JSON.parse(raw); }
-            catch (e) { throw new Error('Unexpected server response. Check the PHP error log.'); }
-            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to send email.');
-            feedback.style.color = '#287345';
-            feedback.textContent = result.message || 'Email sent successfully.';
-            form.reset();
-            subject.value = 'Follow-up from PTC Wellness Guidance Office';
-            window.setTimeout(closeModal, 1400);
+            catch (e) { throw new Error('The server returned an unexpected response. Sending could not be confirmed.'); }
+            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to confirm the email was sent.');
+            emailUI?.succeed();
+            closeAfterSuccess = window.setTimeout(closeModal, 2600);
         } catch (error) {
-            feedback.style.color = '#b42318';
-            feedback.textContent = error.message || 'Unable to send email.';
+            emailUI?.fail(error.message);
         } finally {
+            sending = false;
             submit.disabled = false;
             submit.textContent = 'Send Email';
         }
@@ -1884,165 +1746,6 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
 </script>
 
 <!-- Logout Confirmation Modal -->
-<style>
-    .assessment-live-presence {
-    width: 100%;
-    box-sizing: border-box;
-    margin-top: 16px;
-    padding: 14px 16px;
-    border: 1px solid #d5e4d0;
-    border-radius: 12px;
-    background: #f5f9f2;
-    color: #244236;
-    }
-
-    .live-presence-heading {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 9px;
-    }
-
-    .live-eye-icon {
-        color: #39764d;
-        font-size: 18px;
-    }
-
-    .live-connection-status {
-        margin-left: auto;
-        color: #68796e;
-        font-size: 12px;
-    }
-
-    .assessment-live-presence p {
-        margin: 8px 0 0;
-        font-size: 13px;
-        line-height: 1.5;
-    }
-
-    @media (max-width: 480px) {
-        .live-connection-status {
-            margin-left: 0;
-        }
-    }
-    .logout-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, .58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
-
-    .logout-overlay.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-overlay.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-icon svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-</style>
-
 <div class="logout-overlay" id="logout-modal" aria-hidden="true">
     <section class="logout-dialog"
              role="dialog"
@@ -2155,6 +1858,64 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
     const heartbeatUrl = 'heartbeat_assessment_view.php';
     const checkUrl = 'check_assessment_viewers.php';
     const releaseUrl = 'release_assessment_view.php';
+    const workflowStatusUrl = 'assessment_workflow_status.php';
+    const workflowIndicator = document.getElementById('assessmentWorkflowIndicator');
+
+    function renderWorkflowIndicator(data) {
+        if (!workflowIndicator) return;
+        const reviewed = !!data.is_reviewed;
+        const referred = !!data.has_referral;
+        const scheduled = !!data.is_scheduled;
+        const reviewStatus = document.getElementById('assessmentReviewStatus');
+        if (reviewStatus) {
+            reviewStatus.classList.toggle('review-status-done', reviewed);
+            reviewStatus.classList.toggle('review-status-waiting', !reviewed);
+            reviewStatus.lastChild.textContent = reviewed ? 'Reviewed' : 'Pending';
+        }
+        workflowIndicator.dataset.reviewed = reviewed ? '1' : '0';
+        workflowIndicator.dataset.referral = referred ? '1' : '0';
+        workflowIndicator.dataset.scheduled = scheduled ? '1' : '0';
+
+        if (!reviewed) {
+            workflowIndicator.replaceChildren();
+            return;
+        }
+
+        const item = document.createElement(scheduled || referred ? 'span' : 'button');
+        item.className = 'review-button review-button-outline schedule-referral-top-button';
+        if (scheduled || referred) {
+            item.setAttribute('aria-disabled', 'true');
+            item.style.cursor = 'default';
+            const check = document.createElement('span');
+            check.setAttribute('aria-hidden', 'true');
+            check.textContent = '✓';
+            item.append(check, document.createTextNode(scheduled ? ' Scheduled' : ' Referral Already Created'));
+            item.setAttribute('aria-label', scheduled ? 'Student appointment scheduled' : 'Referral already created');
+        } else {
+            item.type = 'button';
+            item.id = 'openAssessmentReferralModal';
+            const icon = document.createElement('span');
+            icon.setAttribute('aria-hidden', 'true');
+            icon.textContent = '▦';
+            item.append(icon, document.createTextNode(' Schedule for Referral'));
+        }
+        workflowIndicator.replaceChildren(item);
+        const referralModal = document.getElementById('assessmentReferralModal');
+        if (referralModal && (referred || scheduled)) {
+            referralModal.classList.remove('is-open');
+            referralModal.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    async function refreshWorkflowStatus() {
+        const response = await fetch(workflowStatusUrl + '?assessment_id=' + encodeURIComponent(assessmentId), {
+            credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.message || 'Unable to refresh workflow status.');
+        renderWorkflowIndicator(data);
+        isReviewed = !!data.is_reviewed;
+    }
 
     let lockToken = '';
     let isReviewer = false;
@@ -2317,6 +2078,7 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
 
             updateViewers(data);
             updateReviewerDisplay(data);
+            await refreshWorkflowStatus();
 
             // If no counselor currently owns the lock,
             // attempt to acquire it.
@@ -2384,13 +2146,12 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
     // Refresh the active counselor list every 3 seconds.
     setInterval(refreshActivity, 3000);
 
-    // Keep the viewer and review lock active.
+    // The PHP endpoint only extends the review lock when the token is valid.
+    // Keep the viewer active even after the assessment is reviewed.
     setInterval(function () {
-        if (!isReviewed) {
-            sendHeartbeat().catch(function (error) {
-                console.error('Heartbeat failed:', error);
-            });
-        }
+        sendHeartbeat().catch(function (error) {
+            console.error('Heartbeat failed:', error);
+        });
     }, 10000);
 
     // Release the viewer and lock when leaving the page.
@@ -2400,5 +2161,143 @@ $counselor_name = $_SESSION['fullname'] ?? 'Counselor';
 </script>
 
 
+
+<!-- Referral creation stays on View Assessment until a successful save. -->
+<?php if ($assessment): ?>
+<div id="assessmentReferralModal" class="assessment-referral-overlay" aria-hidden="true">
+  <section class="assessment-referral-dialog" role="dialog" aria-modal="true" aria-labelledby="assessmentReferralTitle">
+    <div class="assessment-referral-heading">
+      <div><small>NEW REFERRAL</small><h2 id="assessmentReferralTitle">Create Referral</h2></div>
+      <button type="button" id="closeAssessmentReferral" class="assessment-referral-close" aria-label="Close referral form">×</button>
+    </div>
+    <form id="assessmentReferralForm" action="referral.php" method="POST">
+      <input type="hidden" name="action" value="create_referral">
+      <input type="hidden" name="assessment_id" value="<?= (int)$assessment_id ?>">
+      <div class="assessment-referral-student"><small>Selected student</small><strong><?= va_escape($student['fullname'] ?: $student['name']) ?></strong><small>Assessment type: Needs Assessment</small></div>
+      <label for="assessmentReferralReason">Referral Reason <span aria-hidden="true">*</span></label>
+      <textarea id="assessmentReferralReason" name="referral_reason" maxlength="2000" required placeholder="Explain why this student is being referred..."></textarea>
+      <label for="assessmentReferralNotes">Counselor Notes</label>
+      <textarea id="assessmentReferralNotes" name="counselor_notes" maxlength="10000" placeholder="Add additional notes relevant to this referral..."></textarea>
+      <p id="assessmentReferralError" class="assessment-referral-error" role="alert" hidden></p>
+      <div class="assessment-referral-actions"><button type="button" id="cancelAssessmentReferral">Cancel</button><button type="submit" id="submitAssessmentReferral">Create Referral</button></div>
+    </form>
+  </section>
+</div>
+
+<!-- Animated confirmation shown only after the server confirms the referral was saved. -->
+<div id="referralSavedModal" class="referral-saved-overlay" aria-hidden="true">
+  <section class="referral-saved-card" role="dialog" aria-modal="true" aria-labelledby="referralSavedTitle">
+    <div class="referral-saved-check" aria-hidden="true">
+      <svg viewBox="0 0 52 52"><path d="M14 27l8 8 17-18"/></svg>
+    </div>
+    <p class="referral-saved-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
+    <h2 id="referralSavedTitle">Referral Created Successfully!</h2>
+    <p class="referral-saved-copy">The referral details have been saved. Taking you to Referral Management...</p>
+    <div class="referral-saved-progress"><span></span></div>
+  </section>
+</div>
+<div id="referralPageTransition" class="referral-page-transition" aria-hidden="true">
+  <div class="referral-transition-content"><span class="referral-transition-spinner"></span><strong>Opening Referral Management</strong><small>Please wait a moment...</small></div>
+</div>
+<script>
+(function(){
+ const modal=document.getElementById('assessmentReferralModal');
+ if(!modal)return;
+ const form=document.getElementById('assessmentReferralForm'), error=document.getElementById('assessmentReferralError'), submit=document.getElementById('submitAssessmentReferral');
+ const close=()=>{modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');document.body.style.overflow='';const currentOpener=document.getElementById('openAssessmentReferralModal');if(currentOpener)currentOpener.focus();};
+ document.getElementById('assessmentWorkflowIndicator')?.addEventListener('click',e=>{const opener=e.target.closest('#openAssessmentReferralModal');if(!opener)return;modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';document.getElementById('assessmentReferralReason').focus();});
+ document.getElementById('closeAssessmentReferral').addEventListener('click',close);
+ document.getElementById('cancelAssessmentReferral').addEventListener('click',close);
+ modal.addEventListener('click',e=>{if(e.target===modal)close();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('is-open'))close();});
+ form.addEventListener('submit',async e=>{
+  e.preventDefault();if(submit.disabled||!form.reportValidity())return;
+  error.hidden=true;submit.disabled=true;submit.classList.add('is-saving');submit.innerHTML='<span class="referral-inline-spinner" aria-hidden="true"></span><span>Creating Referral...</span>';
+  try{
+   const response=await fetch(form.getAttribute('action')||'referral.php',{
+    method:'POST',body:new FormData(form),credentials:'same-origin',
+    headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'}
+   });
+   const responseText=await response.text();
+   let result;
+   try { result=JSON.parse(responseText); }
+   catch(parseError) {
+    console.error('Create Referral returned non-JSON response:',responseText);
+    throw new Error('The server returned an unexpected page instead of JSON. Check the PHP error log and referral.php URL.');
+   }
+   if(!response.ok||!result.success)throw new Error(result.message||'Unable to create referral.');
+
+   // Keep the counselor informed: show the success confirmation before navigating.
+   modal.classList.add('is-closing');
+   window.setTimeout(()=>{
+    modal.classList.remove('is-open','is-closing');
+    modal.setAttribute('aria-hidden','true');
+    const saved=document.getElementById('referralSavedModal');
+    saved.classList.add('is-visible');
+    saved.setAttribute('aria-hidden','false');
+    window.setTimeout(()=>{
+     const transition=document.getElementById('referralPageTransition');
+     transition.classList.add('is-visible');
+     transition.setAttribute('aria-hidden','false');
+     window.setTimeout(()=>window.location.assign('referral.php?created=1'),600);
+    },2100);
+   },220);
+  }catch(err){
+   error.textContent=err.message||'Unable to create referral. Please try again.';
+   error.hidden=false;
+   submit.disabled=false;submit.classList.remove('is-saving');submit.textContent='Create Referral';
+  }
+ });
+})();
+</script>
+<?php endif; ?>
+
+<script>
+/* Assessment responses: presentation-only dialog. Does not modify answers or review state. */
+(function () {
+    'use strict';
+    const dialog = document.getElementById('needsAssessmentResponsesDialog');
+    const opener = document.getElementById('openNeedsAssessmentResponses');
+    const closeTop = document.getElementById('closeNeedsAssessmentResponses');
+    const closeBottom = document.getElementById('closeNeedsAssessmentResponsesFooter');
+    if (!dialog || !opener || typeof dialog.showModal !== 'function') return;
+
+    let originalOverflow = '';
+    let isOpening = false;
+    function openResponses() {
+        if (dialog.open || isOpening) return;
+        isOpening = true;
+        originalOverflow = document.body.style.overflow;
+        dialog.showModal();
+        document.body.style.overflow = 'hidden';
+        dialog.querySelector('.va-responses-dialog-body').scrollTop = 0;
+        closeTop?.focus();
+        isOpening = false;
+    }
+    function closeResponses() {
+        if (dialog.open) dialog.close();
+    }
+    opener.addEventListener('click', openResponses);
+    closeTop?.addEventListener('click', closeResponses);
+    closeBottom?.addEventListener('click', closeResponses);
+    dialog.addEventListener('click', function (event) {
+        // Clicking outside the dialog card (on its backdrop area) closes it.
+        if (event.target === dialog) closeResponses();
+    });
+    dialog.addEventListener('close', function () {
+        document.body.style.overflow = originalOverflow;
+        if (opener.isConnected) opener.focus({preventScroll: true});
+    });
+})();
+</script>
+
+<script>
+/* Presentation-only: the Assessment Queue remains the parent navigation section. */
+(function () {
+    const link = document.querySelector('#counselorSidebar .counselor-nav-link[href="assessment_queue.php"]');
+    if (link) { link.classList.add('is-active'); link.setAttribute('aria-current', 'location'); }
+})();
+</script>
+<script src="../assets/js/counselor/counselor-layout.js?v=<?= (int) (@filemtime(__DIR__ . '/../assets/js/counselor/counselor-layout.js') ?: 0) ?>" defer></script>
 </body>
 </html>

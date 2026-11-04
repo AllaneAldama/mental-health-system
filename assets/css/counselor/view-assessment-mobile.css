@@ -1,0 +1,263 @@
+/* PTC WELLNESS — VIEW ASSESSMENT MOBILE
+   Dedicated mobile overrides (<=900px), loaded after view-assessment.css.
+   The shared counselor-layout.css owns the topbar, sidebar and footer.
+*/
+@media (max-width:900px) {
+  body.assessment-review-page .responses-launch-actions {flex-direction:column;align-items:stretch;}
+  body.assessment-review-page .responses-open-button {width:100%;}
+}
+@media (max-width:900px) {
+    body.assessment-review-page .main-content { max-width: 100%; padding: 24px clamp(18px,3.5vw,32px) 32px; }
+    /* Keep the existing stacked mobile identity/actions; never squeeze buttons
+       beside the student's name at tablet or phone widths. */
+    body.assessment-review-page .student-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    body.assessment-review-page .student-overview > .student-overview-main,
+    body.assessment-review-page .student-overview > .student-overview-actions,
+    body.assessment-review-page .student-overview > .assessment-live-presence,
+    body.assessment-review-page .student-overview > .student-meta-grid {
+        grid-column: 1;
+    }
+    body.assessment-review-page .student-overview > .student-overview-actions {
+        justify-self: stretch;
+        margin: 14px 0 0;
+        width: 100%;
+    }
+    body.assessment-review-page .student-meta-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+    body.assessment-review-page .page-header { flex-direction: column; align-items: flex-start; gap: 13px; min-height: 0; padding: 26px; }
+    body.assessment-review-page .header-right { width: 100%; justify-content: flex-start; }
+}
+@media (max-width:560px) {
+    body.assessment-review-page .page-header { padding: 21px 17px; border-radius: 18px; }
+    body.assessment-review-page .page-title { font-size: 1.84rem; }
+    body.assessment-review-page .datetime-card { min-height: 40px; padding: 10px 12px; gap: 8px; }
+    body.assessment-review-page .datetime-item { font-size: .67rem; gap: 6px; }
+    body.assessment-review-page .datetime-icon { width: 17px; height: 17px; flex-basis: 17px; }
+    body.assessment-review-page .datetime-icon svg { width: 17px; height: 17px; }
+    body.assessment-review-page .main-content { padding: 15px 12px 28px; }
+    body.assessment-review-page .page-header .page-subtitle { font-size: .76rem; line-height: 1.6; }
+    body.assessment-review-page .review-card { padding: 17px 15px; margin-bottom: 14px; border-radius: 18px; }
+    body.assessment-review-page .review-card > h2,
+    body.assessment-review-page .review-section-heading h2,
+    body.assessment-review-page .student-overview h2 { font-size: 1.12rem; line-height: 1.35; }
+    body.assessment-review-page .review-section-heading p,
+    body.assessment-review-page .student-subtitle,
+    body.assessment-review-page .review-disclaimer,
+    body.assessment-review-page .responses-launch-actions p { font-size: .77rem; line-height: 1.6; }
+    body.assessment-review-page .student-meta-grid strong { font-size: .82rem; }
+    body.assessment-review-page .priority-review-heading h2 { font-size: 1.12rem; line-height: 1.4; }
+    body.assessment-review-page .priority-review-description,
+    body.assessment-review-page .priority-disclaimer { font-size: .8rem; line-height: 1.65; }
+    body.assessment-review-page .priority-metric strong { font-size: 1.8rem; line-height: 1.2; }
+    body.assessment-review-page .review-button { min-height: 44px; font-size: .8rem; }
+    body.assessment-review-page .responses-launch-actions { padding: 13px; }
+    body.assessment-review-page .student-meta-grid { grid-template-columns: minmax(0,1fr); gap: 9px; }
+    body.assessment-review-page .student-overview-main { align-items: flex-start; }
+    body.assessment-review-page .student-avatar { width: 45px; height: 45px; flex-basis: 45px; }
+    body.assessment-review-page .notes-footer { align-items: stretch; flex-direction: column; }
+    body.assessment-review-page .notes-footer .review-button { width: 100%; }
+    body.assessment-review-page .review-actions { flex-direction: column; align-items: stretch; }
+    body.assessment-review-page .review-actions > *,
+    body.assessment-review-page .review-actions form .review-button { width: 100%; }
+}
+@media (max-width: 900px) {
+    .response-row {
+        grid-template-columns: minmax(0, 1fr) minmax(180px, 230px);
+        gap: 18px;
+    }
+
+    .response-question p {
+        font-size: 16px;
+    }
+
+    .answer-pill {
+        font-size: 15px;
+    }
+}
+@media (max-width: 760px) {
+    .response-sections {
+        gap: 16px;
+    }
+
+    .response-section > h3 {
+        padding: 15px 16px;
+        font-size: 17px;
+    }
+
+    .response-list {
+        padding: 0 15px;
+    }
+
+    .response-row {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: start;
+        gap: 13px;
+        padding: 18px 0;
+    }
+
+    .response-question {
+        grid-template-columns: 32px minmax(0, 1fr);
+        gap: 12px;
+    }
+
+    .question-number {
+        width: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+
+    .response-question p {
+        font-size: 16px;
+        line-height: 1.7;
+    }
+
+    .response-answer,
+    .response-answer-written {
+        justify-self: start;
+        width: 100%;
+        max-width: 100%;
+        margin-left: 0;
+    }
+
+    .answer-pill {
+        min-height: 42px;
+        padding: 9px 13px;
+        font-size: 15px;
+    }
+
+    .written-response-full {
+        padding: 15px;
+        font-size: 16px;
+        line-height: 1.75;
+    }
+}
+@media (max-width: 480px) {
+    .response-section > h3 {
+        font-size: 16px;
+    }
+
+    .response-question p {
+        font-size: 15px;
+    }
+
+    .answer-pill {
+        font-size: 14px;
+    }
+
+    .written-response-full {
+        font-size: 15px;
+    }
+}
+@media (max-width: 760px) {
+    .priority-review-heading {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .priority-metrics {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .priority-scale {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .priority-metric {
+        padding: 16px;
+    }
+}
+@media (max-width: 600px) {
+    .review-success-card {
+        align-items: flex-start;
+        gap: 12px;
+        padding: 18px 14px;
+    }
+
+    .review-success-icon {
+        flex-basis: 44px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .review-success-content h2 {
+        font-size: 16px;
+    }
+
+    .review-success-content p {
+        font-size: 13px;
+    }
+}
+@media (max-width: 700px) {
+    .student-overview-actions {
+        width: 100%;
+        margin: 18px 0 0;
+        justify-content: flex-start;
+        align-items: center;
+        flex-direction: row-reverse;
+        gap: 10px;
+    }
+}
+@media (max-width: 420px) {
+    .student-overview-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .student-overview-actions .review-status,
+    .student-overview-actions .schedule-referral-top-button {
+        width: 100%;
+    }
+}
+@media(max-width:600px){.email-modal-overlay{padding:12px}.email-modal-card{padding:20px;width:100%}.email-modal-field textarea{min-height:160px}}
+@media (max-width: 480px) {
+        .live-connection-status {
+            margin-left: 0;
+        }
+    }
+@media (max-width: 480px) {
+        .logout-dialog {
+            padding: 28px 20px;
+        }
+
+        .logout-dialog h2 {
+            font-size: 19px;
+        }
+    }
+@media(max-width:520px){.assessment-referral-dialog{padding:18px}.assessment-referral-actions button{flex:1}.referral-saved-card{padding:28px 20px}}
+
+@media (max-width:900px) {
+    body.assessment-review-page .va-responses-dialog {
+        width:calc(100vw - 24px); max-width:none; max-height:calc(100dvh - 28px);
+        border-radius:17px;
+    }
+    body.assessment-review-page .va-responses-dialog-shell {height:calc(100dvh - 28px);max-height:none;}
+    body.assessment-review-page .va-responses-dialog-header {padding:17px 17px 13px;}
+    body.assessment-review-page .va-responses-dialog-toolbar {padding:9px 17px;}
+    body.assessment-review-page .va-responses-dialog-body {padding:14px 13px;}
+    body.assessment-review-page .va-responses-dialog-footer {padding:11px 16px;}
+    body.assessment-review-page .va-responses-dialog-body .response-section > h3 {font-size:.94rem;padding:13px 14px;}
+    body.assessment-review-page .va-responses-dialog-body .response-list {padding:0 12px;}
+    body.assessment-review-page .va-responses-dialog-body .response-row {gap:10px;padding:14px 0;}
+    body.assessment-review-page .va-responses-dialog-body .response-question {gap:9px;}
+    body.assessment-review-page .va-responses-dialog-body .response-question p {font-size:.86rem;line-height:1.6;}
+}
+@media (max-width:480px) {
+    body.assessment-review-page .va-responses-dialog-title h2 {font-size:1.12rem;}
+    body.assessment-review-page .va-responses-dialog-eyebrow {font-size:.6rem;}
+    body.assessment-review-page .va-responses-dialog-title > p:last-child {font-size:.75rem;line-height:1.5;}
+    body.assessment-review-page .va-responses-dialog-hint {display:none;}
+    body.assessment-review-page .va-responses-dialog-footer > span {display:none;}
+    body.assessment-review-page .va-responses-dialog-footer .review-button {width:100%;}
+}
+
+/* 320–360px: match the narrow-phone gutters of Assessment Queue. */
+@media (max-width: 360px) {
+  body.assessment-review-page .main-content {padding:12px 10px 24px;}
+  body.assessment-review-page .page-header {padding:18px 14px;}
+  body.assessment-review-page .page-title {font-size:1.68rem;}
+  body.assessment-review-page .datetime-item {font-size:.62rem;}
+  body.assessment-review-page .datetime-divider {display:none;}
+  body.assessment-review-page .review-card {padding:14px 12px;}
+  body.assessment-review-page .va-responses-dialog-body {padding:13px 10px;}
+}

@@ -1,6 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/counselor_session.php';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . "/../includes/counselor_session.php";
 
 if (
     !isset($_SESSION['role_type']) ||
@@ -57,7 +56,11 @@ function queue_has_scheduled_appointment($conn, $assessment_id)
         return false;
     }
 
-    $sql = "SELECT s.schedule_id
+    $schedule_status_column = queue_column_exists($conn, 'schedule_data', 'status')
+        ? 's.status'
+        : "'Pending'";
+
+    $sql = "SELECT s.schedule_id, {$schedule_status_column} AS schedule_status
             FROM referral_data r
             INNER JOIN schedule_data s
                 ON s.referral_id = r.referral_id
@@ -75,11 +78,66 @@ function queue_has_scheduled_appointment($conn, $assessment_id)
     mysqli_stmt_execute($stmt);
 
     $result = mysqli_stmt_get_result($stmt);
-    $has_schedule = $result && mysqli_num_rows($result) > 0;
+    $row = $result ? mysqli_fetch_assoc($result) : null;
 
     mysqli_stmt_close($stmt);
 
-    return $has_schedule;
+    if (!$row) {
+        return 'Not Scheduled';
+    }
+
+    $status = trim((string)($row['schedule_status'] ?? 'Pending'));
+    if (strcasecmp($status, 'Completed') === 0) {
+        return 'Completed';
+    }
+    if (strcasecmp($status, 'Cancelled') === 0) {
+        return 'Cancelled';
+    }
+    return 'Scheduled';
+}
+
+function queue_latest_referral_status($conn, $assessment_id)
+{
+    if (
+        !queue_table_exists($conn, 'referral_data') ||
+        !queue_column_exists($conn, 'referral_data', 'assessment_id') ||
+        !queue_column_exists($conn, 'referral_data', 'referral_id') ||
+        !queue_column_exists($conn, 'referral_data', 'referral_status')
+    ) {
+        return 'No Referral';
+    }
+
+    $sql = "SELECT referral_status
+            FROM referral_data
+            WHERE assessment_id = ?
+            ORDER BY referral_id DESC
+            LIMIT 1";
+    $stmt = mysqli_prepare($conn, $sql);
+    if (!$stmt) {
+        return 'No Referral';
+    }
+
+    mysqli_stmt_bind_param($stmt, 'i', $assessment_id);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $row = $result ? mysqli_fetch_assoc($result) : null;
+    mysqli_stmt_close($stmt);
+
+    $status = trim((string)($row['referral_status'] ?? ''));
+    return $status !== '' ? $status : 'No Referral';
+}
+
+function queue_referral_status_class($status)
+{
+    switch (strtolower((string)$status)) {
+        case 'accepted':
+        case 'completed':
+            return 'queue-status-reviewed';
+        case 'pending':
+            return 'queue-status-pending';
+        default:
+            return 'queue-status-pending';
+    }
 }
 
 function queue_escape($value)
@@ -293,7 +351,7 @@ if ($assessment_table) {
     $user_column = queue_first_column(
         $conn,
         $assessment_table,
-        ['user_id', 'student_id']
+        ['student_id']
     );
 
     $date_column = queue_first_column(
@@ -315,12 +373,12 @@ if ($assessment_table) {
 
     if (!$id_column || !$user_column || !$date_column) {
         $queue_error = 'The assessment table is missing an identifiable record ID, student ID, or submission date.';
-    } elseif (!queue_table_exists($conn, 'user_data')) {
-        $queue_error = 'The student account table user_data could not be found.';
+    } elseif (!queue_table_exists($conn, 'student_profiles')) {
+        $queue_error = 'The student profiles table could not be found.';
     } else {
         $name_column = queue_first_column(
             $conn,
-            'user_data',
+            'student_profiles',
             ['alias', 'fullname', 'student_number']
         );
 
@@ -330,7 +388,7 @@ if ($assessment_table) {
 
         if (
             $name_column === 'alias' &&
-            queue_column_exists($conn, 'user_data', 'fullname')
+            queue_column_exists($conn, 'student_profiles', 'fullname')
         ) {
             $student_expression =
                 "COALESCE(NULLIF(u.alias, ''), NULLIF(u.fullname, ''), 'Student')";
@@ -346,8 +404,8 @@ if ($assessment_table) {
                     {$select_status},
                     {$student_expression} AS student_name
                 FROM `{$assessment_table}` a
-                LEFT JOIN user_data u
-                    ON u.user_id = a.`{$user_column}`";
+                LEFT JOIN student_profiles u
+                    ON u.student_id = a.`{$user_column}`";
 
         $where = [];
         $params = [];
@@ -358,7 +416,7 @@ if ($assessment_table) {
             $searchable_columns = [];
 
             foreach (['fullname', 'alias', 'student_number', 'email'] as $column) {
-                if (queue_column_exists($conn, 'user_data', $column)) {
+                if (queue_column_exists($conn, 'student_profiles', $column)) {
                     $searchable_columns[] = "u.`{$column}`";
                 }
             }
@@ -442,7 +500,11 @@ if ($assessment_table) {
             $item['schedule_status'] = queue_has_scheduled_appointment(
                 $conn,
                 (int)$item['assessment_id']
-            ) ? 'Scheduled' : 'Not Scheduled';
+            );
+            $item['referral_status'] = queue_latest_referral_status(
+                $conn,
+                (int)$item['assessment_id']
+            );
         }
 
         unset($item);
@@ -476,43 +538,6 @@ if ($assessment_table) {
 } else {
     $queue_error = 'No recognized assessment table was found. Verify the table used by the Needs Assessment Survey.';
 }
-$latest_assessment_id = 0;
-
-if (
-    queue_table_exists($conn, 'assessment_data') &&
-    queue_column_exists($conn, 'assessment_data', 'assessment_id') &&
-    queue_column_exists($conn, 'assessment_data', 'assessment_type')
-) {
-    $result = mysqli_query(
-        $conn,
-        "SELECT COALESCE(MAX(assessment_id), 0) AS latest_id
-         FROM assessment_data
-         WHERE assessment_type = 'Needs Assessment'"
-    );
-
-    if ($result) {
-        $row = mysqli_fetch_assoc($result);
-
-        $latest_assessment_id = (int) ($row['latest_id'] ?? 0);
-    }
-}
-    $latest_assessment_id = 0;
-
-    if (
-        queue_table_exists($conn, 'assessment_data') &&
-        queue_column_exists($conn, 'assessment_data', 'assessment_id')
-    ) {
-        $result = mysqli_query(
-            $conn,
-            "SELECT COALESCE(MAX(assessment_id), 0) AS latest_id
-            FROM assessment_data"
-        );
-
-        if ($result) {
-            $row = mysqli_fetch_assoc($result);
-            $latest_assessment_id = (int) ($row['latest_id'] ?? 0);
-        }
-    }
 
 $counselor_name = $_SESSION['fullname']
     ?? $_SESSION['alias']
@@ -525,69 +550,22 @@ $counselor_name = $_SESSION['fullname']
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assessment Queue | PTC Wellness</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    <link rel="stylesheet" href="../assets/css/assessment-queue.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-base.css?v=<?= (int) (@filemtime(__DIR__ . "/../assets/css/counselor/counselor-base.css") ?: 8) ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) (@filemtime(__DIR__ . "/../assets/css/counselor/counselor-layout.css") ?: 12) ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/assessment-queue.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/assessment-queue.css') ?: 9) ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/assessment-queue-mobile.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/assessment-queue-mobile.css') ?: 9) ?>" media="(max-width: 900px)">
+<style>
+/* Guardrail: never allow raw unstyled date, summary, search or empty-state SVGs. */
+.counselor-page .datetime-icon svg { width:19px; height:19px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; }
+.counselor-page .summary-symbol svg { width:21px; height:21px; display:block; fill:none; stroke:currentColor; stroke-width:1.8; }
+.counselor-page .queue-search svg { width:18px; height:18px; flex:0 0 18px; fill:none; stroke:currentColor; stroke-width:1.8; }
+.counselor-page .queue-empty-icon svg { width:23px; height:23px; fill:none; stroke:currentColor; stroke-width:1.8; }
+</style>
 </head>
-<body class="counselor-page">
-<div class="app-shell">
-
-    <!-- Existing sidebar retained -->
-    <aside class="sidebar">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32">
-                    <path d="M16 27V15"></path>
-                    <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                    <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-                </svg>
-            </span>
-            <span class="brand-copy">
-                <strong class="brand-name">PTC Wellness</strong>
-                <small class="brand-tagline">Mental Health &amp; Well-being</small>
-            </span>
-        </a>
-
-        <nav class="nav" aria-label="Counselor navigation">
-            <a class="nav-link" href="dashboard.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg></span>
-                Dashboard
-            </a>
-            <a class="nav-link active" href="assessment_queue.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"></path><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"></path></svg></span>
-                Assessments Queue
-            </a>
-            <a class="nav-link" href="monitoring.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 12s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
-                Monitoring
-            </a>
-            <a class="nav-link" href="referral.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"></path><path d="M5 5v14h14"></path></svg></span>
-                Referral
-            </a>
-            <a class="nav-link" href="assessment_history.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
-                Assessment History
-            </a>
-            <a class="nav-link" href="profile.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
-                Profile
-            </a>
-            <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"></path><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path></svg></span>
-                Logout
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <strong>Well-being matters.</strong>
-            <span>Supporting a healthier campus, one step at a time.</span>
-        </div>
-    </aside>
-
+<body class="counselor-page queue-page">
+<?php include __DIR__ . "/../includes/counselor/sidebar.php"; ?>
+<div class="counselor-workspace">
+    <?php include __DIR__ . "/../includes/counselor/topbar.php"; ?>
     <main class="main-content">
         <header class="page-header">
             <div class="page-heading">
@@ -618,22 +596,26 @@ $counselor_name = $_SESSION['fullname']
         <section class="queue-summary-grid">
             <article class="queue-summary-card">
                 <span class="summary-label">Matching Records</span>
+                <span class="summary-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3 8 9-5 9 5-9 5-9-5Zm0 5 9 5 9-5M3 18l9 5 9-5"/></svg></span>
                 <strong><?= number_format($total_count) ?></strong>
                 <span class="summary-caption">Based on your current filters</span>
             </article>
             <article class="queue-summary-card summary-pending">
                 <span class="summary-label">Pending</span>
+                <span class="summary-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg></span>
                 <strong><?= number_format($pending_count) ?></strong>
                 <span class="summary-caption">Awaiting counselor review</span>
             </article>
             <article class="queue-summary-card summary-reviewed">
                 <span class="summary-label">Reviewed</span>
+                <span class="summary-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg></span>
                 <strong><?= number_format($reviewed_count) ?></strong>
                 <span class="summary-caption">Marked as reviewed</span>
             </article>
         </section>
 
         <section class="queue-panel">
+            <div class="queue-controls">
             <div class="queue-panel-heading">
                 <div>
                     <h2>Submitted Assessments</h2>
@@ -694,6 +676,12 @@ $counselor_name = $_SESSION['fullname']
                 <span><b>Not Rated:</b> no valid Likert answers</span>
             </div>
 
+            </div><!-- /.queue-controls -->
+            <div class="queue-records">
+                <div class="queue-records-heading">
+                    <div><h2>Assessment Records</h2><p>Student assessment submissions and current workflow status</p></div>
+                    <span class="queue-record-count">Showing <?= number_format($total_count) ?> record<?= $total_count === 1 ? '' : 's' ?></span>
+                </div>
             <?php if ($queue_error !== ''): ?>
                 <div class="queue-alert">
                     <strong>Unable to display the queue</strong>
@@ -701,15 +689,16 @@ $counselor_name = $_SESSION['fullname']
                 </div>
             <?php elseif ($assessments): ?>
                 <div class="queue-table-wrap">
-                    <table class="queue-table" style="width:100%; min-width:1050px; table-layout:fixed;">
+                    <table class="queue-table">
                         <colgroup>
-                            <col class="col-student" style="width:19%">
-                            <col class="col-assessment" style="width:9%">
-                            <col class="col-date" style="width:15%">
-                            <col class="col-status" style="width:11%">
-                            <col class="col-schedule" style="width:12%">
-                            <col class="col-priority" style="width:11%">
-                            <col class="col-action" style="width:23%">
+                            <col class="col-student">
+                            <col class="col-assessment">
+                            <col class="col-date">
+                            <col class="col-status">
+                            <col class="col-referral">
+                            <col class="col-schedule">
+                            <col class="col-priority">
+                            <col class="col-action">
                         </colgroup>
                         <thead>
                             <tr>
@@ -717,6 +706,7 @@ $counselor_name = $_SESSION['fullname']
                                 <th scope="col">Assessment ID</th>
                                 <th scope="col">Date Submitted</th>
                                 <th scope="col" class="center-cell">Review Status</th>
+                                <th scope="col" class="center-cell">Referral Status</th>
                                 <th scope="col" class="center-cell">Schedule Status</th>
                                 <th scope="col" class="center-cell">Priority</th>
                                 <th scope="col" class="center-cell">Action</th>
@@ -737,39 +727,44 @@ $counselor_name = $_SESSION['fullname']
                                     $priority_class = queue_priority_class($priority);
                                 ?>
                                 <tr>
-                                    <td>
+                                    <td data-label="Student">
                                         <div class="queue-student">
                                             <span class="queue-avatar" aria-hidden="true"><?= queue_escape($initial) ?></span>
                                             <span class="queue-student-name"><?= queue_escape($student_name) ?></span>
                                         </div>
                                     </td>
-                                    <td><span class="assessment-id">#<?= $assessment_id ?></span></td>
-                                    <td>
+                                    <td data-label="Assessment ID"><span class="assessment-id">#<?= $assessment_id ?></span></td>
+                                    <td data-label="Date Submitted">
                                         <span class="submitted-date"><?= queue_escape($date_label) ?></span>
                                         <?php if ($time_label !== ''): ?>
                                             <span class="submitted-time"><?= queue_escape($time_label) ?></span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="center-cell">
+                                    <td class="center-cell" data-label="Review Status">
                                         <span class="queue-status <?= $is_reviewed ? 'queue-status-reviewed' : 'queue-status-pending' ?>">
                                             <span class="queue-status-dot"></span>
                                             <?= queue_escape($status) ?>
                                         </span>
                                     </td>
-                                    <td class="center-cell">
-                                        <?php if (($item['schedule_status'] ?? '') === 'Scheduled'): ?>
-                                            <span class="queue-status queue-status-reviewed">
-                                                <span class="queue-status-dot"></span>
-                                                Scheduled
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="queue-status queue-status-pending">
-                                                <span class="queue-status-dot"></span>
-                                                Not Scheduled
-                                            </span>
-                                        <?php endif; ?>
+                                    <td class="center-cell" data-label="Referral Status">
+                                        <span class="queue-status <?= queue_referral_status_class($item['referral_status'] ?? 'No Referral') ?>">
+                                            <span class="queue-status-dot"></span>
+                                            <?= queue_escape($item['referral_status'] ?? 'No Referral') ?>
+                                        </span>
                                     </td>
-                                    <td class="center-cell">
+                                    <td class="center-cell" data-label="Schedule Status">
+                                        <?php
+                                            $schedule_status = $item['schedule_status'] ?? 'Not Scheduled';
+                                            $schedule_status_class = in_array($schedule_status, ['Scheduled', 'Completed'], true)
+                                                ? 'queue-status-reviewed'
+                                                : 'queue-status-pending';
+                                        ?>
+                                        <span class="queue-status <?= $schedule_status_class ?>">
+                                            <span class="queue-status-dot"></span>
+                                            <?= queue_escape($schedule_status) ?>
+                                        </span>
+                                    </td>
+                                    <td class="center-cell" data-label="Priority">
                                         <div class="queue-priority-cell">
                                             <span class="priority-badge <?= queue_escape($priority_class) ?>">
                                                 <?= queue_escape($priority ?? 'Not Rated') ?>
@@ -779,7 +774,7 @@ $counselor_name = $_SESSION['fullname']
                                             </span>
                                         </div>
                                     </td>
-                                    <td class="center-cell queue-action-cell">
+                                    <td class="center-cell queue-action-cell" data-label="Action">
                                         <a class="queue-view-button" href="view_assessment.php?id=<?= $assessment_id ?>">
                                             <span>View Assessment</span><span aria-hidden="true">→</span>
                                         </a>
@@ -812,18 +807,16 @@ $counselor_name = $_SESSION['fullname']
                 </div>
             <?php endif; ?>
 
+            </div><!-- /.queue-records -->
             <p class="queue-privacy-note">
                 Priority is a provisional workflow indicator based on available Likert responses.
                 It is not a clinical diagnosis or validated clinical risk level.
             </p>
         </section>
 
-        <footer class="page-footer">
-            <span>PTC Wellness · Counselor Portal</span>
-            <span>Confidential student information — handle with care.</span>
-        </footer>
     </main>
-</div>
+    <?php include __DIR__ . "/../includes/counselor/footer.php"; ?>
+    </div><!-- /.counselor-workspace -->
 
 <script>
 (function () {
@@ -834,7 +827,7 @@ $counselor_name = $_SESSION['fullname']
 
     const dateFormatter = new Intl.DateTimeFormat('en-PH', {
         timeZone: 'Asia/Manila',
-        weekday: 'short',
+        weekday: 'long',
         month: 'short',
         day: 'numeric',
         year: 'numeric'
@@ -844,7 +837,6 @@ $counselor_name = $_SESSION['fullname']
         timeZone: 'Asia/Manila',
         hour: '2-digit',
         minute: '2-digit',
-        second: '2-digit',
         hour12: true
     });
 
@@ -859,361 +851,73 @@ $counselor_name = $_SESSION['fullname']
 })();
 </script>
 
-<!-- Logout Confirmation Modal -->
-<style>
-    .logout-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, .58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
-
-    .logout-overlay.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-overlay.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-icon svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-</style>
-
-<div class="logout-overlay" id="logout-modal" aria-hidden="true">
-    <section class="logout-dialog"
-             role="dialog"
-             aria-modal="true"
-             aria-labelledby="logout-title"
-             aria-describedby="logout-description">
-
-        <div class="logout-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="1.8"
-                 stroke-linecap="round"
-                 stroke-linejoin="round">
-                <path d="M10 17l5-5-5-5"></path>
-                <path d="M15 12H3"></path>
-                <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-            </svg>
-        </div>
-
-        <h2 id="logout-title">Are you sure you want to log out?</h2>
-
-        <p id="logout-description">
-            You may lose any unsaved changes. Please make sure
-            you've saved your work before leaving.
-        </p>
-
-        <div class="logout-actions">
-            <button type="button"
-                    class="logout-confirm"
-                    id="confirm-logout">
-                Yes, Log Out
-            </button>
-
-            <button type="button"
-                    class="logout-cancel"
-                    id="cancel-logout">
-                Go Back
-            </button>
-        </div>
-    </section>
-</div>
-
 <script>
 (function () {
-    const modal = document.getElementById('logout-modal');
-    const cancelButton = document.getElementById('cancel-logout');
-    const confirmButton = document.getElementById('confirm-logout');
-
-    if (!modal || !cancelButton || !confirmButton) return;
-
-    const logoutLinks = document.querySelectorAll(
-        'a[href*="logout.php"]'
-    );
-
-    let previousFocus = null;
-
-    function openModal(event) {
-        event.preventDefault();
-        previousFocus = document.activeElement;
-
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-
-        cancelButton.focus();
-    }
-
-    function closeModal() {
-        modal.classList.remove('is-open');
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-
-        if (previousFocus) previousFocus.focus();
-    }
-
-    logoutLinks.forEach(function (link) {
-        link.addEventListener('click', openModal);
-    });
-
-    cancelButton.addEventListener('click', closeModal);
-
-    confirmButton.addEventListener('click', function () {
-        window.location.href = '../auth/logout.php?portal=counselor';
-    });
-
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) closeModal();
-    });
-
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
-            closeModal();
-        }
-    });
-})();
-</script>
-
-<script>
-(function () {
-
-    const initialLatestId = <?= (int) $latest_assessment_id ?>;
-
+    // This endpoint is used only by Assessment Queue. No other page is modified.
+    const revisionUrl = 'check_new_assessments.php';
+    let lastRevision = null;
     let checking = false;
-    let newAssessmentDetected = false;
 
-    async function checkNewAssessments() {
-
-        if (
-            checking ||
-            newAssessmentDetected ||
-            document.hidden
-        ) {
-            return;
+    async function getRevision() {
+        const response = await fetch(revisionUrl + '?_=' + Date.now(), {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Queue revision check failed');
+        const data = await response.json();
+        if (!data || data.success !== true || typeof data.revision !== 'string') {
+            throw new Error('Invalid queue revision response');
         }
+        return data.revision;
+    }
 
+    async function refreshQueue() {
+        const response = await fetch(window.location.pathname + window.location.search + (window.location.search ? '&' : '?') + '_queue_refresh=' + Date.now(), {
+            method: 'GET',
+            cache: 'no-store',
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!response.ok) throw new Error('Queue refresh failed');
+
+        const html = await response.text();
+        const parsed = new DOMParser().parseFromString(html, 'text/html');
+        const currentSummary = document.querySelector('.queue-summary-grid');
+        const nextSummary = parsed.querySelector('.queue-summary-grid');
+        const currentPanel = document.querySelector('.queue-panel');
+        const nextPanel = parsed.querySelector('.queue-panel');
+
+        if (currentSummary && nextSummary) currentSummary.replaceWith(nextSummary);
+        if (currentPanel && nextPanel) currentPanel.replaceWith(nextPanel);
+    }
+
+    async function pollQueue() {
+        if (checking || document.visibilityState === 'hidden') return;
         checking = true;
-
         try {
-
-            const response = await fetch(
-                'check_new_assessments.php',
-                {
-                    method: 'GET',
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Unable to check assessments.');
+            const revision = await getRevision();
+            if (lastRevision === null) {
+                lastRevision = revision;
+            } else if (revision !== lastRevision) {
+                await refreshQueue();
+                lastRevision = revision;
             }
-
-            const data = await response.json();
-
-            if (
-                data.success &&
-                Number(data.latest_id) > initialLatestId
-            ) {
-                newAssessmentDetected = true;
-
-                window.location.reload();
-            }
-
         } catch (error) {
-            console.error('Assessment update check failed:', error);
-
+            // Keep the page usable during a temporary network interruption.
         } finally {
             checking = false;
         }
     }
 
-    setInterval(checkNewAssessments, 8000);
-
+    pollQueue();
+    window.setInterval(pollQueue, 4000);
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') pollQueue();
+    });
 })();
-
-
-(function () {
-    let lastAssessmentId = <?= (int) $latest_assessment_id ?>;
-    let checking = false;
-
-    async function checkForNewAssessments() {
-        if (checking || document.hidden) return;
-
-        checking = true;
-
-        try {
-            const response = await fetch(
-                'check_new_assessments.php',
-                {
-                    cache: 'no-store',
-                    credentials: 'same-origin'
-                }
-            );
-
-            if (!response.ok) return;
-
-            const data = await response.json();
-
-            if (
-                !data.success ||
-                Number(data.latest_id) <= lastAssessmentId
-            ) {
-                return;
-            }
-
-            // Fetch the current queue, including its active filters.
-            const pageResponse = await fetch(window.location.href, {
-                cache: 'no-store',
-                credentials: 'same-origin'
-            });
-
-            if (!pageResponse.ok) return;
-
-            const html = await pageResponse.text();
-            const parser = new DOMParser();
-            const newPage = parser.parseFromString(html, 'text/html');
-
-            const selectors = [
-                '.queue-summary-grid',
-                '.queue-panel'
-            ];
-
-            let updated = true;
-
-            selectors.forEach(function (selector) {
-                const current = document.querySelector(selector);
-                const replacement = newPage.querySelector(selector);
-
-                if (current && replacement) {
-                    current.replaceWith(replacement);
-                } else {
-                    updated = false;
-                }
-            });
-
-            if (updated) {
-                lastAssessmentId = Number(data.latest_id);
-            }
-
-        } catch (error) {
-            console.error('Live assessment update:', error);
-        } finally {
-            checking = false;
-        }
-    }
-
-    setInterval(checkForNewAssessments, 5000);
-})();
-
-
 </script>
-
+<script src="../assets/js/counselor/counselor-layout.js" defer></script>
 </body>
 </html>

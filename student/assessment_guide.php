@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/session.php';
 
@@ -26,27 +25,25 @@ $alias = htmlspecialchars(
         rel="stylesheet"
     >
 
-    <link rel="stylesheet" href="../assets/css/student.css">
+    <link rel="stylesheet" href="../assets/students/css/student-base.css">
+    <link rel="stylesheet" href="../assets/students/css/assessment-guide.css">
+
+    <link rel="stylesheet" href="../assets/students/css/student-progress.css">
+    <script src="../assets/js/student-progress.js" defer></script>
+
 </head>
 
 <body class="guide-page">
 
 <main class="guide-wrapper">
-
-    <div class="progress-wrapper">
-        <span class="progress-text">Step 3 of 9</span>
-
-        <div class="progress-bar">
-            <div class="progress-fill progress-three"></div>
-        </div>
-    </div>
+    <?php $studentProgressStep = 3; $studentProgressTotal = 6; include __DIR__ . '/student-progress.php'; ?>
 
     <section class="guide-card">
-        
+
         <a href="student_information.php"
-        class="guide-back-btn"
-        aria-label="Back to Student Information"
-        title="Back">
+           class="guide-back-btn"
+           aria-label="Back to Student Information"
+           title="Back">
             <span aria-hidden="true">‹</span>
         </a>
 
@@ -61,13 +58,15 @@ $alias = htmlspecialchars(
         </header>
 
         <div class="guide-message">
-            <h2>You're ready to begin!</h2>
-
-            <p>
-                Before starting the Needs Assessment Survey, take a moment
-                to review these simple reminders. They will help you answer
-                each statement with confidence.
-            </p>
+            <span class="guide-message-icon" aria-hidden="true">i</span>
+            <div class="guide-message-copy">
+                <h2>You're ready to begin!</h2>
+                <p>
+                    Before starting the Needs Assessment Survey, take a moment
+                    to review these simple reminders. They will help you answer
+                    each statement with confidence.
+                </p>
+            </div>
         </div>
 
         <h3 class="guide-section-title">
@@ -79,115 +78,71 @@ $alias = htmlspecialchars(
 
             <article class="guide-item">
                 <span class="guide-number">01</span>
-
                 <div>
                     <h4>Read carefully</h4>
-                    <p>
-                        Take your time to understand each statement
-                        before answering.
-                    </p>
+                    <p>Take your time to understand each statement before answering.</p>
                 </div>
             </article>
 
             <article class="guide-item">
                 <span class="guide-number">02</span>
-
                 <div>
                     <h4>Choose your level of agreement</h4>
-                    <p>
-                        Select the number from 1 to 5 that best reflects
-                        how much you agree or disagree with the statement.
-                    </p>
+                    <p>Select the number from 1 to 5 that best reflects how much you agree or disagree with the statement.</p>
                 </div>
             </article>
 
             <article class="guide-item">
                 <span class="guide-number">03</span>
-
                 <div>
                     <h4>There are no right or wrong answers</h4>
-                    <p>
-                        Answer based on your own experiences
-                        and point of view.
-                    </p>
+                    <p>Answer based on your own experiences and point of view.</p>
                 </div>
             </article>
 
             <article class="guide-item">
                 <span class="guide-number">04</span>
-
                 <div>
                     <h4>Your answers matter</h4>
-                    <p>
-                        Your responses will help GCVEO understand student
-                        needs and improve its services.
-                    </p>
+                    <p>Your responses will help GCVEO understand student needs and improve its services.</p>
                 </div>
             </article>
 
         </div>
 
         <section class="guide-scale">
-
             <div class="guide-scale-heading">
-                <span aria-hidden="true">📊</span>
-
+                <span class="guide-scale-icon" aria-hidden="true">📊</span>
                 <div>
                     <h3>Response Scale</h3>
-                    <p>
-                        Use these options for statements 1–10 in each category.
-                    </p>
+                    <p>Use these options for statements 1–10 in each category.</p>
                 </div>
             </div>
 
             <div class="guide-scale-list">
-
-                <div class="guide-scale-option">
-                    <span>5</span>
-                    <p>Strongly Agree</p>
-                </div>
-
-                <div class="guide-scale-option">
-                    <span>4</span>
-                    <p>Agree</p>
-                </div>
-
-                <div class="guide-scale-option">
-                    <span>3</span>
-                    <p>Neither Agree nor Disagree</p>
-                </div>
-
-                <div class="guide-scale-option">
-                    <span>2</span>
-                    <p>Disagree</p>
-                </div>
-
-                <div class="guide-scale-option">
-                    <span>1</span>
-                    <p>Strongly Disagree</p>
-                </div>
-
+                <div class="guide-scale-option"><span>5</span><p>Strongly Agree</p></div>
+                <div class="guide-scale-option"><span>4</span><p>Agree</p></div>
+                <div class="guide-scale-option"><span>3</span><p>Neither Agree nor Disagree</p></div>
+                <div class="guide-scale-option"><span>2</span><p>Disagree</p></div>
+                <div class="guide-scale-option"><span>1</span><p>Strongly Disagree</p></div>
             </div>
         </section>
 
         <aside class="guide-reminder">
             <span aria-hidden="true">💡</span>
-
             <p>
                 <strong>One last reminder:</strong>
-                Please answer honestly. The written-response question
-                at the end of each category is optional.
+                Please answer honestly. The written-response question at the end of each category is optional.
             </p>
         </aside>
 
         <a href="needs_assessment.php" class="guide-start-btn">
             <span>Start Needs Assessment</span>
-            <span aria-hidden="true">→</span>
+            <span class="guide-start-arrow" aria-hidden="true">→</span>
         </a>
 
         <p class="guide-footer">
-            Take your time. Your responses help GCVEO better understand
-            student needs.
+            Take your time. Your responses help GCVEO better understand student needs.
         </p>
 
     </section>

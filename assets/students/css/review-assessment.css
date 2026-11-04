@@ -1,0 +1,393 @@
+/* =========================================
+   PTC STUDENT MODULE — REVIEW ASSESSMENT
+   Page-specific presentation only.
+========================================= */
+body.review-assessment-page {
+    margin: 0;
+    background: radial-gradient(ellipse at top left, #eaf3e6 0%, transparent 42%), #f7f9f5;
+    font-family: 'Poppins', sans-serif;
+    color: #2d3e2e;
+}
+.review-assessment-page .student-progress {
+    display: block;
+    width: calc(100% - 36px);
+    max-width: 900px;
+    margin: 22px auto 0;
+    box-sizing: border-box;
+}
+.review-assessment-page .student-progress *,
+.review-assessment-page .review-wrapper,
+.review-assessment-page .review-wrapper * { box-sizing: border-box; }
+.review-assessment-page .student-progress__heading { padding: 0 2px; gap: 12px; }
+.review-assessment-page .student-progress__track { width: 100%; }
+.review-assessment-page .review-wrapper {
+    width: calc(100% - 36px);
+    max-width: 900px;
+    margin: 34px auto 60px;
+}
+.review-assessment-page .review-wrapper > h1 {
+    margin: 0 0 12px;
+    color: #25472b;
+    font-size: clamp(26px, 4vw, 34px);
+    line-height: 1.3;
+}
+.review-assessment-page .review-wrapper > p {
+    margin-bottom: 26px;
+    color: #657366;
+    font-size: 14px;
+    line-height: 1.8;
+}
+.review-assessment-page .review-card {
+    margin: 20px 0;
+    padding: 26px;
+    background: #fff;
+    border: 1px solid #e5ebe1;
+    border-radius: 18px;
+    box-shadow: 0 8px 28px rgba(45, 75, 40, 0.06);
+}
+.review-assessment-page .review-card h2 { margin: 0 0 20px; color: #4e7c47; font-size: 21px; line-height: 1.4; }
+.review-assessment-page .review-question { padding: 18px 0; border-bottom: 1px solid #edf0ea; }
+.review-assessment-page .review-question:last-child { border-bottom: none; padding-bottom: 0; }
+.review-assessment-page .review-question p {
+    margin: 0 0 12px; color: #344334; font-size: 14px; line-height: 1.8; overflow-wrap: anywhere;
+}
+.review-assessment-page .review-answer {
+    display: inline-block; max-width: 100%; padding: 8px 12px; background: #eaf4e5;
+    border: 1px solid #dce8d6; border-radius: 9px; color: #416c3c; font-size: 13px;
+    font-weight: 600; line-height: 1.7; overflow-wrap: anywhere; white-space: normal;
+}
+.review-assessment-page .review-actions {
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 28px;
+}
+.review-assessment-page .review-actions form { margin: 0; }
+.review-assessment-page .review-actions a,
+.review-assessment-page .review-actions button {
+    min-height: 48px; box-sizing: border-box; display: inline-flex; align-items: center;
+    justify-content: center; padding: 12px 20px; border: none; border-radius: 10px;
+    font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer;
+}
+.review-assessment-page .review-actions .back-btn { background: #e9eee6; color: #3b4d38; }
+.review-assessment-page .review-actions .submit-btn {
+    background: #4f7d49; color: #fff; box-shadow: 0 5px 12px rgba(60, 105, 55, 0.14);
+}
+.review-assessment-page .review-actions .submit-btn:hover { background: #3e6839; }
+@media (max-width: 600px) {
+    .review-assessment-page .student-progress { width: calc(100% - 28px); margin-top: 18px; }
+    .review-assessment-page .student-progress__heading { gap: 8px; font-size: 12px; }
+    .review-assessment-page .review-wrapper { width: calc(100% - 28px); margin: 24px auto 36px; }
+    .review-assessment-page .review-card { padding: 18px; border-radius: 14px; }
+    .review-assessment-page .review-card h2 { font-size: 19px; }
+    .review-assessment-page .review-question { padding: 16px 0; }
+    .review-assessment-page .review-question p { font-size: 14px; }
+    .review-assessment-page .review-actions { flex-direction: column-reverse; align-items: stretch; }
+    .review-assessment-page .review-actions a,
+    .review-assessment-page .review-actions button { width: 100%; min-height: 50px; }
+    .review-assessment-page .review-actions form { width: 100%; }
+}
+
+/* Submission progress modal */
+body.submission-modal-open { overflow: hidden; }
+.submission-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, visibility .25s ease;
+}
+.submission-modal.is-visible { visibility: visible; opacity: 1; pointer-events: auto; }
+.submission-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(24, 43, 27, .48);
+    backdrop-filter: blur(5px);
+}
+.submission-modal__panel {
+    position: relative;
+    width: min(100%, 470px);
+    max-height: calc(100vh - 36px);
+    overflow-y: auto;
+    padding: 30px 32px 26px;
+    border: 1px solid #e3ebdf;
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: 0 24px 70px rgba(27, 55, 31, .22);
+    text-align: center;
+    transform: translateY(14px) scale(.98);
+    transition: transform .3s ease;
+}
+.submission-modal.is-visible .submission-modal__panel { transform: translateY(0) scale(1); }
+.submission-mail {
+    position: relative;
+    width: 112px;
+    height: 94px;
+    margin: 0 auto 14px;
+    display: grid;
+    place-items: center;
+}
+.submission-mail__glow {
+    position: absolute;
+    width: 88px;
+    height: 66px;
+    border-radius: 50%;
+    background: rgba(103, 157, 91, .16);
+    filter: blur(12px);
+    animation: mailGlow 2.2s ease-in-out infinite;
+}
+.submission-mail__envelope {
+    position: relative;
+    width: 76px;
+    height: 54px;
+    margin-top: 15px;
+    border: 2px solid #4f7d49;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #f7fbf4, #e3efdf);
+    box-shadow: 0 8px 18px rgba(67, 111, 61, .16);
+    animation: mailFloat 2.2s ease-in-out infinite;
+}
+.submission-mail__envelope::before,
+.submission-mail__envelope::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    width: 52%;
+    height: 36px;
+    background: #d6e7d0;
+    border-bottom: 2px solid #4f7d49;
+}
+.submission-mail__envelope::before {
+    left: 0;
+    clip-path: polygon(0 0, 100% 100%, 0 100%);
+    border-bottom-left-radius: 6px;
+}
+.submission-mail__envelope::after {
+    right: 0;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    border-bottom-right-radius: 6px;
+}
+.submission-mail__flap {
+    position: absolute;
+    z-index: 3;
+    top: -2px;
+    left: 8px;
+    width: 54px;
+    height: 38px;
+    background: #c7dfbf;
+    border-left: 2px solid #4f7d49;
+    border-top: 2px solid #4f7d49;
+    transform: rotate(45deg) skew(-8deg, -8deg);
+    transform-origin: 0 0;
+    clip-path: polygon(0 0, 100% 0, 0 100%);
+    animation: envelopeFlap 2.2s ease-in-out infinite;
+}
+.submission-mail__letter {
+    position: absolute;
+    z-index: 1;
+    left: 17px;
+    top: -12px;
+    width: 38px;
+    height: 35px;
+    border-radius: 4px;
+    background: #fff;
+    box-shadow: 0 1px 5px rgba(42, 76, 39, .12);
+    animation: letterLift 2.2s ease-in-out infinite;
+}
+.submission-mail__letter::before,
+.submission-mail__letter::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    height: 2px;
+    border-radius: 2px;
+    background: #b9cfb2;
+}
+.submission-mail__letter::before { top: 10px; width: 23px; }
+.submission-mail__letter::after { top: 17px; width: 17px; }
+.submission-mail__plane {
+    position: absolute;
+    z-index: 4;
+    right: -20px;
+    top: -15px;
+    color: #5f9854;
+    font-size: 21px;
+    opacity: 0;
+    transform: translate(-5px, 8px) rotate(-25deg);
+    animation: paperPlane 2.2s ease-in-out infinite;
+}
+.submission-mail__success {
+    display: none;
+    width: 76px;
+    height: 76px;
+    place-items: center;
+    border-radius: 50%;
+    background: #e7f3e3;
+    color: #4f7d49;
+    font-size: 43px;
+    font-weight: 600;
+    box-shadow: 0 8px 24px rgba(67, 111, 61, .15);
+}
+.submission-mail.is-success .submission-mail__envelope,
+.submission-mail.is-success .submission-mail__glow,
+.submission-mail.is-success .submission-mail__plane { display: none; }
+.submission-mail.is-success .submission-mail__success { display: grid; animation: successPop .45s ease both; }
+.submission-mail.is-failed .submission-mail__plane { display: none; }
+.submission-modal__eyebrow {
+    margin: 0 0 7px;
+    color: #6d9465;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
+.submission-modal__panel h2 {
+    margin: 0;
+    color: #294b30;
+    font-size: clamp(20px, 4vw, 24px);
+    line-height: 1.35;
+}
+.submission-modal__description {
+    margin: 10px auto 22px;
+    max-width: 360px;
+    color: #69766a;
+    font-size: 13px;
+    line-height: 1.7;
+}
+.submission-stages {
+    display: grid;
+    gap: 10px;
+    margin: 0 auto;
+    text-align: left;
+}
+.submission-stage {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 11px;
+    border: 1px solid #edf1ea;
+    border-radius: 11px;
+    background: #fbfcfa;
+    color: #879187;
+    transition: background .2s ease, border-color .2s ease;
+}
+.submission-stage.is-active {
+    border-color: #cfe0c9;
+    background: #f2f8ef;
+    color: #385d37;
+}
+.submission-stage.is-done {
+    border-color: #dcebd7;
+    background: #f5faf2;
+    color: #416c3c;
+}
+.submission-stage__icon {
+    display: grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    border-radius: 50%;
+    background: #edf0eb;
+    color: #7b8879;
+    font-size: 12px;
+    font-weight: 700;
+}
+.submission-stage.is-active .submission-stage__icon,
+.submission-stage.is-done .submission-stage__icon {
+    background: #dcebd6;
+    color: #3f703a;
+}
+.submission-stage__label { font-size: 12px; font-weight: 600; }
+.submission-stage__state { font-size: 10px; white-space: nowrap; color: #899389; }
+.submission-progress {
+    height: 6px;
+    margin: 20px 0 12px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #edf1ea;
+}
+.submission-progress span {
+    display: block;
+    width: 8%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #79a86e, #4f7d49);
+    transition: width .45s ease;
+}
+.submission-modal__footnote {
+    margin: 0;
+    color: #879187;
+    font-size: 11px;
+    line-height: 1.6;
+}
+.submission-continue {
+    margin-top: 18px;
+    min-height: 45px;
+    padding: 11px 20px;
+    border: 0;
+    border-radius: 10px;
+    background: #4f7d49;
+    color: #fff;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.submission-continue:hover { background: #3e6839; }
+.submit-btn:disabled { opacity: .65; cursor: wait; }
+
+@keyframes mailFloat {
+    0%, 100% { transform: translateY(0) rotate(-1deg); }
+    50% { transform: translateY(-7px) rotate(1deg); }
+}
+@keyframes mailGlow {
+    0%, 100% { transform: scale(.88); opacity: .65; }
+    50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes envelopeFlap {
+    0%, 18%, 100% { transform: rotate(45deg) skew(-8deg, -8deg); }
+    42%, 70% { transform: rotate(90deg) skew(-8deg, -8deg); }
+}
+@keyframes letterLift {
+    0%, 20%, 100% { transform: translateY(7px); }
+    48%, 68% { transform: translateY(-17px); }
+}
+@keyframes paperPlane {
+    0%, 34% { opacity: 0; transform: translate(-5px, 8px) rotate(-25deg); }
+    48% { opacity: 1; }
+    75%, 100% { opacity: 0; transform: translate(22px, -27px) rotate(-25deg); }
+}
+@keyframes successPop {
+    0% { transform: scale(.65); opacity: 0; }
+    70% { transform: scale(1.12); opacity: 1; }
+    100% { transform: scale(1); }
+}
+@media (max-width: 480px) {
+    .submission-modal { padding: 12px; }
+    .submission-modal__panel { padding: 25px 18px 21px; border-radius: 20px; }
+    .submission-stage { grid-template-columns: 27px minmax(0, 1fr); gap: 8px; }
+    .submission-stage__state { grid-column: 2; margin-top: -5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .submission-mail__glow,
+    .submission-mail__envelope,
+    .submission-mail__flap,
+    .submission-mail__letter,
+    .submission-mail__plane,
+    .submission-mail__success { animation: none !important; }
+    .submission-modal,
+    .submission-modal__panel,
+    .submission-progress span { transition: none !important; }
+}
+
+.submission-stage.is-failed {
+    border-color: #f0d9ce;
+    background: #fff8f4;
+    color: #8a4d37;
+}
+.submission-stage.is-failed .submission-stage__icon {
+    background: #f8e4da;
+    color: #9a5238;
+}

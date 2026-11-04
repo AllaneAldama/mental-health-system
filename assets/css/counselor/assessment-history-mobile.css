@@ -1,0 +1,71 @@
+/* PTC Wellness | Assessment History — mobile/tablet only (<=900px).
+   Shared sidebar drawer/topbar/notification remain owned by counselor-layout.css.
+   Cards use Queue + Monitoring mobile sizes. */
+@media(max-width:900px){
+ body.history-page .main-content{width:100%;max-width:100%;min-width:0;padding:24px clamp(18px,3.5vw,32px) 32px}
+ body.history-page .page-header{flex-direction:column;align-items:flex-start;gap:15px;min-height:0;margin-bottom:17px;padding:26px;border-radius:23px}
+ body.history-page .page-heading,body.history-page .header-right{min-width:0;width:100%}
+ body.history-page .page-title{font-size:clamp(1.85rem,4.2vw,2.4rem);line-height:1.17}
+ body.history-page .history-eyebrow{font-size:.7rem}
+ body.history-page .history-subtitle{font-size:.84rem;line-height:1.65}
+ body.history-page .header-right{justify-content:flex-start}
+ body.history-page .datetime-card{min-height:40px;flex-wrap:wrap;gap:9px;padding:10px 12px}
+ body.history-page .datetime-item{font-size:.72rem}
+ body.history-page .datetime-icon svg{width:19px;height:19px}
+ body.history-page .datetime-divider{height:20px}
+ body.history-page .history-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:0 0 17px}
+ body.history-page .history-stat{min-height:145px;padding:18px;border-radius:18px}
+ body.history-page .history-stat>span{font-size:.8rem}
+ body.history-page .history-stat>strong{font-size:2.2rem}
+ body.history-page .history-stat>small{font-size:.71rem}
+ body.history-page .history-panel{padding:22px;border-radius:21px}
+ body.history-page .history-panel-heading h2{font-size:1.12rem}
+ body.history-page .history-panel-heading p{font-size:.77rem}
+ body.history-page .history-search{grid-template-columns:minmax(0,1fr) minmax(125px,190px);gap:9px}
+ body.history-page .history-search>.history-button{width:100%}
+ /* Transform six-column table to labeled mobile assessment cards. No JS needed. */
+ body.history-page .history-table-wrap{border:0;background:transparent;overflow:visible}
+ body.history-page .history-table{display:block;min-width:0;width:100%;table-layout:auto}
+ body.history-page .history-table thead{display:none}
+ body.history-page .history-table tbody{display:grid;gap:14px;width:100%}
+ body.history-page .history-table tbody tr{display:block;min-width:0;width:100%;overflow:hidden;padding:12px 14px 14px;border:1px solid #e0eae0;border-radius:17px;background:#fff;box-shadow:0 6px 16px rgba(23,69,39,.04)}
+ body.history-page .history-table tbody tr:hover{background:#fff}
+ body.history-page .history-table td{display:grid;grid-template-columns:minmax(100px,.84fr) minmax(0,1.16fr);align-items:center;gap:12px;min-height:43px;margin:0;padding:11px 0;border:0;border-bottom:1px solid #edf2ed;font-size:.79rem;overflow-wrap:anywhere}
+ body.history-page .history-table td::before{content:attr(data-label);color:#6d8071;font-size:.71rem;font-weight:750;line-height:1.4}
+ body.history-page .history-table td:first-child{display:block;margin:-12px -14px 5px;padding:16px 14px;background:linear-gradient(105deg,#edf7ec,#f9fcf8);border-bottom:1px solid #e1ebe1}
+ body.history-page .history-table td:first-child::before{display:none}
+ body.history-page .history-student-name{font-size:.96rem}
+ body.history-page .history-student-detail,body.history-page .history-student-number{font-size:.73rem}
+ body.history-page .history-table td:last-child{display:block;padding:14px 0 0;border:0}
+ body.history-page .history-table td:last-child::before{display:none}
+ body.history-page .history-table td:last-child .history-button{width:100%;min-height:43px}
+ body.history-page .history-status{justify-self:start}
+ body.history-page .history-id{font-size:.8rem}
+}
+@media(max-width:600px){
+ body.history-page .main-content{padding:17px 13px 27px}
+ body.history-page .page-header{padding:21px 18px;border-radius:19px}
+ body.history-page .page-title{font-size:clamp(1.75rem,7vw,2rem)}
+ body.history-page .datetime-card{width:100%;max-width:100%;justify-content:space-between;gap:7px;padding:10px}
+ body.history-page .datetime-item{font-size:.67rem;gap:5px}
+ body.history-page .datetime-icon{width:17px;height:17px;flex-basis:17px}
+ body.history-page .datetime-icon svg{width:17px;height:17px}
+ body.history-page .history-stat{min-height:136px;padding:15px}
+ body.history-page .history-stat>span{font-size:.76rem}
+ body.history-page .history-stat>strong{font-size:2rem}
+ body.history-page .history-stat>small{font-size:.68rem}
+ body.history-page .history-panel{padding:16px;border-radius:18px}
+ body.history-page .history-panel-heading{gap:6px 12px}
+ body.history-page .history-search{grid-template-columns:minmax(0,1fr);gap:9px}
+ body.history-page .history-search>.history-button{width:100%}
+ body.history-page .history-table-footer{flex-direction:column;gap:5px}
+ body.history-page .logout-dialog{padding:28px 20px}
+ body.history-page .logout-dialog h2{font-size:19px}
+}
+@media(max-width:360px){
+ body.history-page .datetime-card{flex-wrap:wrap}
+ body.history-page .datetime-divider{display:none}
+ body.history-page .history-stats{gap:9px}
+ body.history-page .history-stat{padding:12px}
+ body.history-page .history-table td{grid-template-columns:minmax(86px,.84fr) minmax(0,1.16fr);gap:7px}
+}

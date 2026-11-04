@@ -85,139 +85,16 @@ $scale = [
 
     <title>Needs Assessment Survey</title>
 
-    <link rel="stylesheet" href="../assets/css/student.css">
+    <link rel="stylesheet" href="../assets/students/css/needs-assessment.css">
+    <script src="../assets/js/student-progress.js" defer></script>
 
-    <style>
-        .needs-wrapper {
-            width: min(900px, 92%);
-            margin: 30px auto;
-        }
-
-        .needs-card {
-            background: white;
-            border-radius: 14px;
-            padding: 24px;
-            margin: 20px 0;
-            box-shadow: 0 3px 12px rgba(0,0,0,.07);
-        }
-
-        .scale-note {
-            background: #f1f6ef;
-            padding: 14px;
-            border-radius: 8px;
-            margin: 16px 0;
-            line-height: 1.8;
-        }
-
-        .question {
-            padding: 18px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .question:last-child {
-            border-bottom: none;
-        }
-
-        .question-title {
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        .rating-options {
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 8px;
-        }
-
-        .rating-option {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px 4px;
-            text-align: center;
-            font-size: 13px;
-            cursor: pointer;
-        }
-
-        .rating-option input {
-            accent-color: #5E8B59;
-        }
-
-        .rating-option:has(input:checked) {
-            border: 2px solid #5E8B59;
-            background: #eaf3e6;
-        }
-
-        .needs-card textarea {
-            box-sizing: border-box;
-            width: 100%;
-            min-height: 100px;
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font: inherit;
-        }
-
-        .needs-actions {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            margin: 20px 0 35px;
-        }
-
-        .needs-actions button,
-        .needs-actions a {
-            border: none;
-            border-radius: 8px;
-            padding: 12px 20px;
-            font: inherit;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .next-btn {
-            background: #5E8B59;
-            color: white;
-        }
-
-        .back-btn {
-            background: #eee;
-            color: #222;
-        }
-
-        @media (max-width: 600px) {
-            .needs-card {
-                padding: 16px;
-            }
-
-            .rating-options {
-                grid-template-columns: 1fr;
-            }
-
-            .rating-option {
-                flex-direction: row;
-                justify-content: flex-start;
-                text-align: left;
-                gap: 12px;
-            }
-        }
-    </style>
 </head>
 
-<body>
+<body class="needs-assessment-page">
 
 <main class="needs-wrapper">
+    <?php $studentProgressStep = 4; $studentProgressTotal = 6; include __DIR__ . '/student-progress.php'; ?>
 
-    <p>Category <?= $current + 1 ?> of <?= count($categories) ?></p>
-
-    <progress
-        value="<?= $current + 1 ?>"
-        max="<?= count($categories) ?>"
-        style="width:100%;"
-    ></progress>
 
     <a
         href="<?= $current > 0
@@ -229,6 +106,19 @@ $scale = [
     >
         <span aria-hidden="true">‹</span>
     </a>
+
+    <div class="category-progress">
+        <div class="category-progress-heading">
+            <span>Category <?= $current + 1 ?> of <?= count($categories) ?></span>
+            <span><?= (int) round((($current + 1) / count($categories)) * 100) ?>% Complete</span>
+        </div>
+        <progress
+            class="category-progress-bar"
+            value="<?= $current + 1 ?>"
+            max="<?= count($categories) ?>"
+            aria-label="Assessment category progress"
+        ></progress>
+    </div>
 
     <h1>Needs Assessment Survey</h1>
     <h2><?= htmlspecialchars($category, ENT_QUOTES, 'UTF-8') ?></h2>
@@ -242,8 +132,8 @@ $scale = [
     <div class="scale-note">
         <?php foreach ($scale as $number => $label): ?>
             <div>
-                <strong><?= $number ?></strong> -
-                <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?>
+                <strong><?= $number ?></strong>
+                <span><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></span>
             </div>
         <?php endforeach; ?>
     </div>
@@ -329,6 +219,20 @@ $scale = [
 
             <?php endforeach; ?>
 
+            <div class="back-to-top-row">
+                <button
+                    type="button"
+                    class="back-to-top"
+                    aria-label="Back to top"
+                    title="Back to top"
+                    aria-hidden="true"
+                    tabindex="-1"
+                >
+                    <span class="back-to-top__icon" aria-hidden="true">↑</span>
+                    <span>Back to Top</span>
+                </button>
+            </div>
+
         </section>
 
         <div class="needs-actions">
@@ -364,6 +268,48 @@ $scale = [
     </form>
 
 </main>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    /* Animate the category progress bar to its current category value. */
+    const categoryProgress = document.querySelector('.category-progress-bar');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (categoryProgress && !reduceMotion) {
+        const targetValue = Number(categoryProgress.value);
+        const maxValue = Number(categoryProgress.max) || 5;
+        categoryProgress.value = 0;
+
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                categoryProgress.value = Math.min(targetValue, maxValue);
+            });
+        });
+    }
+
+    /* Fade the Back to Top control in after scrolling; keep it clear of navigation. */
+    const backToTop = document.querySelector('.back-to-top');
+
+    if (backToTop) {
+        const updateBackToTop = function () {
+            const isVisible = window.scrollY >= 420;
+            backToTop.classList.toggle('is-visible', isVisible);
+            backToTop.setAttribute('aria-hidden', String(!isVisible));
+            backToTop.tabIndex = isVisible ? 0 : -1;
+        };
+
+        window.addEventListener('scroll', updateBackToTop, { passive: true });
+        updateBackToTop();
+
+        backToTop.addEventListener('click', function () {
+            window.scrollTo({
+                top: 0,
+                behavior: reduceMotion ? 'auto' : 'smooth'
+            });
+        });
+    }
+});
+</script>
 
 </body>
 </html>

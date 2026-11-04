@@ -92,8 +92,8 @@ $sql = "
         u.program AS student_program,
         u.year_level AS student_year_level
     FROM assessment_data AS a
-    LEFT JOIN user_data AS u
-        ON u.user_id = a.user_id
+    LEFT JOIN student_profiles AS u
+        ON u.student_id = a.student_id
 ";
 
 $conditions = [];
@@ -185,126 +185,33 @@ if ($stmt) {
         rel="stylesheet"
     >
 
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    <link rel="stylesheet" href="../assets/css/assessment_history.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-base.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/counselor-layout.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/assessment-history.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/assessment-history.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/assessment-history-mobile.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/assessment-history-mobile.css') ?>" media="(max-width: 900px)">
 </head>
 
 <body class="counselor-page history-page">
 
-<div class="app-shell">
-
-    <!-- CONSISTENT PTC WELLNESS SIDEBAR -->
-    <aside class="sidebar">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32">
-                    <path d="M16 27V15"></path>
-                    <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                    <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-                </svg>
-            </span>
-
-            <span class="brand-copy">
-                <strong class="brand-name">PTC Wellness</strong>
-                <small class="brand-tagline">Mental Health &amp; Well-being</small>
-            </span>
-        </a>
-
-        <nav class="nav" aria-label="Counselor navigation">
-            <a class="nav-link" href="dashboard.php">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                    </svg>
-                </span>
-                Dashboard
-            </a>
-
-            <a class="nav-link" href="assessment_queue.php">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M8 6h13M8 12h13M8 18h13"></path>
-                        <path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"></path>
-                    </svg>
-                </span>
-                Assessments Queue
-            </a>
-
-            <a class="nav-link" href="monitoring.php">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M3 12s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7Z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                </span>
-                Monitoring
-            </a>
-
-            <a class="nav-link" href="referral.php">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M7 17 17 7M7 7h10v10"></path>
-                        <path d="M5 5v14h14"></path>
-                    </svg>
-                </span>
-                Referral
-            </a>
-
-            <a class="nav-link active"
-               href="assessment_history.php"
-               aria-current="page">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M12 7v5l3 2"></path>
-                    </svg>
-                </span>
-                Assessment History
-            </a>
-
-            <a class="nav-link" href="profile.php">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="8" r="4"></circle>
-                        <path d="M4 21a8 8 0 0 1 16 0"></path>
-                    </svg>
-                </span>
-                Profile
-            </a>
-
-            <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-                <span class="nav-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M10 17l5-5-5-5M15 12H3"></path>
-                        <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-                    </svg>
-                </span>
-                Logout
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <strong>Well-being matters.</strong>
-            <span>Supporting a healthier campus, one step at a time.</span>
-        </div>
-    </aside>
-
+<?php include __DIR__ . '/../includes/counselor/sidebar.php'; ?>
+<div class="counselor-workspace">
+<?php include __DIR__ . '/../includes/counselor/topbar.php'; ?>
     <!-- MAIN CONTENT -->
-    <main class="history-content">
+    <main class="main-content history-content">
 
-        <header class="history-header">
-            <div>
+        <header class="page-header history-header">
+            <div class="page-heading">
                 <p class="history-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
-                <h1>Assessment History</h1>
-                <p class="history-subtitle">
-                    Review submitted Needs Assessments and track their current status.
-                </p>
+                <h1 class="page-title">Assessment History</h1>
+                <p class="history-subtitle">Review submitted Needs Assessments and track their current status.</p>
             </div>
-
-            <span class="history-portal-tag">Counselor Portal</span>
+            <div class="header-right">
+                <div class="datetime-card" aria-label="Current date and time in Manila">
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span id="history-current-date">Loading date...</span></span>
+                    <span class="datetime-divider" aria-hidden="true"></span>
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span id="history-current-time">Loading time...</span></span>
+                </div>
+            </div>
         </header>
 
         <!-- SUMMARY CARDS -->
@@ -454,8 +361,8 @@ if ($stmt) {
                                     }
                                 ?>
 
-                                <tr>
-                                    <td>
+                                <tr class="history-record-row">
+                                    <td data-label="Student">
                                         <span class="history-student-name">
                                             <?= e($studentName) ?>
                                         </span>
@@ -483,27 +390,27 @@ if ($stmt) {
                                         <?php endif; ?>
                                     </td>
 
-                                    <td>
+                                    <td data-label="Assessment ID">
                                         <span class="history-id">
                                             #<?= (int)$record['assessment_id'] ?>
                                         </span>
                                     </td>
 
-                                    <td>
+                                    <td data-label="Assessment Type">
                                         <span class="history-assessment-type">
                                             <?= e($assessmentType) ?>
                                         </span>
                                     </td>
 
-                                    <td><?= e($dateSubmitted) ?></td>
+                                    <td data-label="Date Submitted"><?= e($dateSubmitted) ?></td>
 
-                                    <td>
+                                    <td data-label="Status">
                                         <span class="history-status <?= e(history_status_class($status)) ?>">
                                             <?= e($status) ?>
                                         </span>
                                     </td>
 
-                                    <td>
+                                    <td data-label="Action">
                                         <a
                                             class="history-button view"
                                             href="view_assessment.php?id=<?= (int)$record['assessment_id'] ?>"
@@ -532,133 +439,13 @@ if ($stmt) {
 
         </section>
 
-        <footer class="history-footer">
-            <span>PTC Wellness · Counselor Portal</span>
-            <span>Supporting a healthier campus, one step at a time.</span>
-        </footer>
+
 
     </main>
+    <?php include __DIR__ . '/../includes/counselor/footer.php'; ?>
 </div>
 
 <!-- Logout Confirmation Modal -->
-<style>
-    .logout-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, 0.58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
-
-    .logout-overlay.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-overlay.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-icon svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-</style>
 
 <div class="logout-overlay"
      id="logout-modal"
@@ -763,5 +550,17 @@ if ($stmt) {
 </script>
 
 
+<script>
+(function(){
+  const dateEl=document.getElementById('history-current-date');
+  const timeEl=document.getElementById('history-current-time');
+  if(!dateEl||!timeEl)return;
+  const d=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'long',month:'short',day:'numeric',year:'numeric'});
+  const t=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',hour12:true});
+  function refresh(){const now=new Date();dateEl.textContent=d.format(now);timeEl.textContent=t.format(now);}
+  refresh();window.setInterval(refresh,1000);
+})();
+</script>
+<script src="../assets/js/counselor/counselor-layout.js?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/counselor/counselor-layout.js') ?>" defer></script>
 </body>
 </html>

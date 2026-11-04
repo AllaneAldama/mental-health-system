@@ -2,6 +2,7 @@
 <?php
 require_once __DIR__ . '/../includes/counselor_session.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/counselor/email-communication.php';
 
 if (
     !isset($_SESSION['role_type']) ||
@@ -99,7 +100,7 @@ $assessment_id_col = $assessment_table
     : null;
 
 $assessment_user_col = $assessment_table
-    ? mon_find_column($conn, $assessment_table, ['user_id', 'student_id'])
+    ? mon_find_column($conn, $assessment_table, ['student_id'])
     : null;
 
 $assessment_date_col = $assessment_table
@@ -108,6 +109,10 @@ $assessment_date_col = $assessment_table
 
 $user_id_col = mon_table_exists($conn, 'user_data')
     ? mon_find_column($conn, 'user_data', ['user_id', 'id'])
+    : null;
+
+$student_id_col = mon_table_exists($conn, 'student_profiles')
+    ? mon_find_column($conn, 'student_profiles', ['student_id'])
     : null;
 
 $referral_counselor_col = $referral_table
@@ -159,7 +164,7 @@ if (
 
     if ($referral_id_for_email < 1 || !$referral_table || !$referral_id_col ||
         !$referral_assessment_col || !$assessment_table || !$assessment_id_col ||
-        !$assessment_user_col || !$user_id_col) {
+        !$assessment_user_col || !$student_id_col) {
         http_response_code(422);
         echo json_encode(['success' => false, 'message' => 'Unable to identify this monitoring case.']);
         exit();
@@ -177,12 +182,12 @@ if (
         exit();
     }
 
-    $verify_sql = "SELECT u.email AS student_email, u.fullname AS student_name
+    $verify_sql = "SELECT u.email AS student_email, u.fullname AS student_name, u.alias AS student_alias
                    FROM `$referral_table` r
                    INNER JOIN `$assessment_table` a
                        ON a.`$assessment_id_col` = r.`$referral_assessment_col`
-                   INNER JOIN user_data u
-                       ON u.`$user_id_col` = a.`$assessment_user_col`
+                   INNER JOIN student_profiles u
+                       ON u.`$student_id_col` = a.`$assessment_user_col`
                    WHERE r.`$referral_id_col` = ?
                    LIMIT 1";
     $verify_stmt = mysqli_prepare($conn, $verify_sql);
@@ -211,12 +216,18 @@ if (
         exit();
     }
 
-    require_once __DIR__ . '/../config/email.php';
+    require_once __DIR__ . '/../includes/counselor/email-communication.php';
+    $recipient_alias = trim((string)($verified_case['student_alias'] ?? ''));
+    if ($recipient_alias === '') $recipient_alias = 'Student';
+    $counselor_name_for_email = ptcCounselorMailSenderName($conn);
+    $email_content = ptcCounselorMailContent($recipient_alias, $email_message, $counselor_name_for_email);
     $send_result = sendSystemEmail(
         $recipient,
-        (string)($verified_case['student_name'] ?? 'Student'),
+        $recipient_alias,
         $subject,
-        $email_message
+        $email_content['plain'],
+        $email_content['html'],
+        $email_content['logo']
     );
 
     if (!empty($send_result['success'])) {
@@ -399,7 +410,7 @@ if (
     $referral_status_col &&
     $assessment_id_col &&
     $assessment_user_col &&
-    $user_id_col
+    $student_id_col
 ) {
     $followup_select = $followup_col
         ? "r.`$followup_col` AS follow_up_date"
@@ -479,6 +490,7 @@ if (
                 $refdate_select,
                 $assessmentdate_select,
                 u.fullname AS fullname,
+                u.alias AS student_alias,
                 u.email AS email,
                 u.student_number AS student_number,
                 $counselor_select
@@ -486,8 +498,8 @@ if (
             FROM `$referral_table` r
             LEFT JOIN `$assessment_table` a
                 ON a.`$assessment_id_col` = r.`$referral_assessment_col`
-            LEFT JOIN user_data u
-                ON u.`$user_id_col` = a.`$assessment_user_col`
+            LEFT JOIN student_profiles u
+                ON u.`$student_id_col` = a.`$assessment_user_col`
             $counselor_join
             WHERE LOWER(COALESCE(r.`$referral_status_col`, 'pending'))
                 NOT IN ('cancelled', 'rejected')
@@ -588,260 +600,32 @@ foreach ($cases as $case) {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    <link rel="stylesheet" href="../assets/css/monitoring.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-base.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/counselor-layout.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/monitoring.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/monitoring.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/monitoring-mobile.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/monitoring-mobile.css') ?>" media="(max-width: 900px)">
+    <link rel="stylesheet" href="../assets/css/counselor/email-sending.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/email-sending.css') ?: 0) ?>">
 
-    <style>
-        .monitoring-toast-overlay {
-            position: fixed;
-            inset: 0;
-            z-index: 99999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: rgba(25, 43, 33, .42);
-            backdrop-filter: blur(5px);
-        }
-        .monitoring-toast-overlay[hidden] {
-            display: none !important;
-            pointer-events: none !important;
-        }
-
-        .monitoring-toast-card {
-            width: min(100%, 430px);
-            padding: 30px;
-            border-radius: 22px;
-            background: #fff;
-            text-align: center;
-            box-shadow: 0 20px 70px rgba(0, 0, 0, .16);
-        }
-
-        .monitoring-toast-icon {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 62px;
-            height: 62px;
-            margin: 0 auto 16px;
-            border-radius: 50%;
-            background: #e9f5e8;
-            color: #287447;
-            font-size: 30px;
-            font-weight: 800;
-        }
-
-        .monitoring-toast-card h2 {
-            margin: 0 0 10px;
-            color: #244b37;
-            font-size: 22px;
-        }
-
-        .monitoring-toast-card p {
-            margin: 0 0 22px;
-            color: #68796e;
-            overflow-wrap: anywhere;
-        }
-
-        .monitoring-toast-button {
-            min-width: 120px;
-            padding: 12px 24px;
-            border: 0;
-            border-radius: 10px;
-            background: #36794e;
-            color: #fff;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .monitoring-form button:disabled {
-            opacity: .65;
-            cursor: wait;
-        }
-
-        .monitoring-action-group{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-        .monitoring-action-group .monitoring-button{white-space:nowrap}
-        .followup-email-overlay{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(25,43,33,.48)}
-        .followup-email-overlay.is-open{display:flex}
-        .followup-email-card{width:min(100%,720px);max-height:92vh;overflow:auto;padding:30px;border:1px solid #dce8d6;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.2)}
-        .followup-email-card h2{margin:0 0 8px;color:#244b37}
-        .followup-email-card p{color:#68796e}
-        .followup-email-field{display:grid;gap:6px;margin:14px 0}
-        .followup-email-field label{font-weight:600;color:#244b37}
-        .followup-email-field input,.followup-email-field textarea{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #cbd9c8;border-radius:9px;font:inherit;color:#244236}
-        .followup-email-field textarea{min-height:190px;resize:vertical}
-        .followup-email-field select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd9c8;border-radius:9px;background:#fff;color:#244236;font:inherit}
-        .followup-template-help{margin:4px 0 14px;color:#68796e;font-size:13px;line-height:1.5}
-        @media(max-width:600px){.followup-email-overlay{padding:12px}.followup-email-card{padding:20px;width:100%}.followup-email-field textarea{min-height:160px}}
-        .followup-email-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
-        .followup-email-actions button{padding:11px 18px;border:0;border-radius:9px;background:#36794e;color:#fff;font:inherit;font-weight:700;cursor:pointer}
-        .followup-email-actions .secondary{background:#edf2eb;color:#244b37}
-        .followup-email-actions button:disabled{opacity:.65;cursor:wait}
-
-        .monitoring-counselor-name,
-        .monitoring-appointment-cell strong {
-            display: block;
-            color: #244b37;
-        }
-        .monitoring-appointment-cell small,
-        .monitoring-counselor-name + small {
-            display: block;
-            margin-top: 4px;
-            color: #718075;
-            font-size: 11px;
-            line-height: 1.4;
-        }
-        .monitoring-muted {
-            color: #718075;
-            font-size: 12px;
-        }
-        .monitoring-schedule-status {
-            display: inline-block;
-            width: fit-content;
-            margin-top: 5px;
-            padding: 3px 7px;
-            border-radius: 999px;
-            background: #edf3e9;
-            color: #315f40 !important;
-            font-weight: 600;
-        }
-
-        .monitoring-note-cell { min-width: 125px; }
-        .monitoring-note-cell .monitoring-button { display:block; }
-        .monitoring-note-count { display:block; margin-top:5px; color:#718075; font-size:11px; }
-        .notes-history-card { width:min(100%,760px); }
-        .counselor-notes-list { display:grid; gap:12px; max-height:55vh; overflow:auto; padding:18px 0; }
-        .counselor-note-entry { border:1px solid #dce8d6; border-radius:12px; padding:15px 17px; background:#fbfdf9; }
-        .counselor-note-meta { color:#36794e; font-size:12px; font-weight:700; margin-bottom:8px; white-space:pre-wrap; }
-        .counselor-note-body { color:#33483a; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.65; }
-        .counselor-notes-empty { padding:24px; text-align:center; color:#718075; border:1px dashed #cbd9c8; border-radius:12px; }
-        .monitoring-row-updated { animation: monitoringRowFlash 1.2s ease; }
-
-        @keyframes monitoringRowFlash {
-            0%, 100% { background: transparent; }
-            35% { background: #edf8e9; }
-        }
-    </style>
+    
 </head>
 
-<body class="counselor-page">
-<div class="app-shell">
-    
-<aside class="sidebar">
-    <a class="brand" href="dashboard.php">
-        <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32">
-                <path d="M16 27V15"></path>
-                <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-            </svg>
-        </span>
-
-        <span class="brand-copy">
-            <strong class="brand-name">PTC Wellness</strong>
-            <small class="brand-tagline">Mental Health &amp; Well-being</small>
-        </span>
-    </a>
-
-    <nav class="nav" aria-label="Counselor navigation">
-        <a class="nav-link" href="dashboard.php">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                    <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                    <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                    <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                </svg>
-            </span>
-            Dashboard
-        </a>
-
-        <a class="nav-link" href="assessment_queue.php">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <path d="M8 6h13"></path>
-                    <path d="M8 12h13"></path>
-                    <path d="M8 18h13"></path>
-                    <path d="m3 6 1 1 2-2"></path>
-                    <path d="m3 12 1 1 2-2"></path>
-                    <path d="m3 18 1 1 2-2"></path>
-                </svg>
-            </span>
-            Assessments Queue
-        </a>
-
-        <a class="nav-link active" href="monitoring.php" aria-current="page">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <path d="M3 12s3.2-7 9-7 9 7 9 7-3.2 7-9 7-9-7-9-7Z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-            </span>
-            Monitoring
-        </a>
-
-        <a class="nav-link" href="referral.php">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <path d="M7 17 17 7"></path>
-                    <path d="M7 7h10v10"></path>
-                    <path d="M5 5v14h14"></path>
-                </svg>
-            </span>
-            Referral
-        </a>
-
-        <a class="nav-link" href="assessment_history.php">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <path d="M12 7v5l3 2"></path>
-                </svg>
-            </span>
-            Assessment History
-        </a>
-
-        <a class="nav-link" href="profile.php">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="8" r="4"></circle>
-                    <path d="M4 21a8 8 0 0 1 16 0"></path>
-                </svg>
-            </span>
-            Profile
-        </a>
-
-        <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-            <span class="nav-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                    <path d="M10 17l5-5-5-5"></path>
-                    <path d="M15 12H3"></path>
-                    <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-                </svg>
-            </span>
-            Logout
-        </a>
-    </nav>
-
-    <div class="sidebar-footer">
-        <strong>Well-being matters.</strong>
-        <span>Supporting a healthier campus, one step at a time.</span>
-    </div>
-</aside>
-
-
-    <main class="main-content monitoring-content">
+<body class="counselor-page monitoring-page">
+<?php include __DIR__ . "/../includes/counselor/sidebar.php"; ?>
+<div class="counselor-workspace">
+<?php include __DIR__ . "/../includes/counselor/topbar.php"; ?>
+<main class="main-content monitoring-content">
         <header class="page-header monitoring-header">
-            <div>
-                <p class="monitoring-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
-                <h1 class="monitoring-title">Monitoring</h1>
-                <p class="monitoring-subtitle">
-                    Track referral follow-ups and document ongoing student support.
-                </p>
+            <div class="page-heading">
+                <p class="eyebrow monitoring-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
+                <h1 class="page-title monitoring-title">Monitoring</h1>
+                <p class="page-subtitle monitoring-subtitle">Track referral follow-ups and document ongoing student support.</p>
             </div>
-            <div class="monitoring-header-tag">
-                <span></span> Counselor Portal
+            <div class="header-right">
+                <div class="datetime-card" aria-label="Current date and time in Manila">
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span id="monitoring-current-date">Loading date...</span></span>
+                    <span class="datetime-divider" aria-hidden="true"></span>
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span id="monitoring-current-time">Loading time...</span></span>
+                </div>
             </div>
         </header>
 
@@ -901,7 +685,7 @@ foreach ($cases as $case) {
                         <th>Assessment</th>
                         <th>Assigned Counselor</th>
                         <th>Referral Status</th>
-                        <th>Next Appointment</th>
+                        <th>Appointment</th>
                         <th>Follow-up Date</th>
                         <th>Counselor Notes</th>
                         <th>Actions</th>
@@ -936,7 +720,7 @@ foreach ($cases as $case) {
                                 data-status-value="<?= mon_escape($case_status) ?>"
                                 data-followup-value="<?= mon_escape($date_value) ?>"
                             >
-                                <td>
+                                <td data-label="Student">
                                     <strong class="monitoring-student-name">
                                         <?= mon_escape($student_name) ?>
                                     </strong>
@@ -944,7 +728,7 @@ foreach ($cases as $case) {
                                         <?= mon_escape($student_email ?: ($case['student_number'] ?? '')) ?>
                                     </small>
                                 </td>
-                                <td>
+                                <td data-label="Assessment">
                                     <a
                                         class="monitoring-assessment-link"
                                         href="view_assessment.php?id=<?= (int)$case['assessment_id'] ?>"
@@ -952,7 +736,7 @@ foreach ($cases as $case) {
                                         Assessment #<?= (int)$case['assessment_id'] ?>
                                     </a>
                                 </td>
-                                <td>
+                                <td data-label="Assigned Counselor">
                                     <strong class="monitoring-counselor-name">
                                         <?= mon_escape(trim((string)($case['assigned_counselor'] ?? '')) ?: 'Not assigned') ?>
                                     </strong>
@@ -960,39 +744,37 @@ foreach ($cases as $case) {
                                         <small class="monitoring-student-email"><?= mon_escape($case['counselor_email']) ?></small>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-label="Referral Status">
                                     <span class="monitoring-badge badge-<?= $badge ?>">
                                         <?= mon_escape($case_status) ?>
                                     </span>
                                 </td>
-                                <td class="monitoring-appointment-cell">
+                                <td data-label="Appointment" class="monitoring-appointment-cell">
                                     <?php
                                     $meeting_date = trim((string)($case['meeting_date'] ?? ''));
                                     $meeting_time = trim((string)($case['meeting_time'] ?? ''));
-                                    $meeting_location = trim((string)($case['meeting_location'] ?? ''));
                                     $schedule_status = trim((string)($case['schedule_status'] ?? ''));
+                                    $meeting_timestamp = $meeting_date !== '' ? strtotime($meeting_date) : false;
+                                    $time_timestamp = $meeting_time !== '' ? strtotime($meeting_time) : false;
+                                    $schedule_status_style = strtolower($schedule_status) === 'pending' ? ' is-pending' : '';
                                     ?>
-                                    <?php if ($meeting_date !== '' && strtotime($meeting_date)): ?>
-                                        <strong><?= mon_escape(date('M d, Y', strtotime($meeting_date))) ?></strong>
-                                        <?php if ($meeting_time !== '' && strtotime($meeting_time)): ?>
-                                            <small><?= mon_escape(date('h:i A', strtotime($meeting_time))) ?></small>
-                                        <?php endif; ?>
-                                        <?php if ($meeting_location !== ''): ?>
-                                            <small><?= mon_escape($meeting_location) ?></small>
-                                        <?php endif; ?>
+                                    <?php if ($meeting_timestamp !== false): ?>
                                         <?php if ($schedule_status !== ''): ?>
-                                            <small class="monitoring-schedule-status"><?= mon_escape($schedule_status) ?></small>
+                                            <span class="monitoring-schedule-status<?= $schedule_status_style ?>"><?= mon_escape($schedule_status) ?></span>
                                         <?php endif; ?>
+                                        <time class="monitoring-appointment-datetime" datetime="<?= mon_escape(date('Y-m-d', $meeting_timestamp) . ($time_timestamp !== false ? 'T' . date('H:i', $time_timestamp) : '')) ?>">
+                                            <?= mon_escape(date('M d, Y', $meeting_timestamp)) ?><?php if ($time_timestamp !== false): ?> · <?= mon_escape(date('h:i A', $time_timestamp)) ?><?php endif; ?>
+                                        </time>
                                     <?php else: ?>
                                         <span class="monitoring-muted">Not scheduled</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="monitoring-followup-cell">
+                                <td data-label="Follow-up Date" class="monitoring-followup-cell">
                                     <?= mon_escape(
                                         $date_value ? date('M d, Y', strtotime($date_value)) : 'Not set'
                                     ) ?>
                                 </td>
-                                <td class="monitoring-note-cell">
+                                <td data-label="Counselor Notes" class="monitoring-note-cell">
                                     <button type="button"
                                         class="monitoring-button secondary open-notes-modal"
                                         data-referral-id="<?= (int)$case['referral_id'] ?>"
@@ -1001,7 +783,7 @@ foreach ($cases as $case) {
                                     >View Notes</button>
                                     <span class="monitoring-note-count"><?= $has_notes ? 'Notes available' : 'No notes yet' ?></span>
                                 </td>
-                                <td>
+                                <td data-label="Actions">
                                     <div class="monitoring-action-group">
                                         <button
                                             type="button"
@@ -1017,6 +799,7 @@ foreach ($cases as $case) {
                                             class="monitoring-button open-followup-email"
                                             data-referral-id="<?= (int)$case['referral_id'] ?>"
                                             data-student="<?= mon_escape($student_name) ?>"
+                                            data-student-alias="<?= mon_escape(trim((string)($case['student_alias'] ?? '')) ?: 'Student') ?>"
                                             data-email="<?= mon_escape($student_email) ?>"
                                             data-followup="<?= mon_escape($date_value) ?>"
                                         >Send Follow-up Email</button>
@@ -1031,11 +814,8 @@ foreach ($cases as $case) {
             </div>
         </section>
 
-        <footer class="monitoring-footer">
-            <span>PTC Wellness · Counselor Portal</span>
-            <span>Confidential student information — handle with care.</span>
-        </footer>
-    </main>
+        </main>
+<?php include __DIR__ . "/../includes/counselor/footer.php"; ?>
 </div>
 
 <!-- Counselor Notes History Modal -->
@@ -1158,7 +938,7 @@ foreach ($cases as $case) {
                     <option value="student_support">Student Support</option>
                     <option value="custom">Custom Message</option>
                 </select>
-                <small class="followup-template-help">Choose a starting format. You can edit the subject and message before sending.</small>
+                <small class="followup-template-help">Choose a message for the student. The greeting uses their alias and the signature uses your counselor name automatically. Edit only the message body.</small>
             </div>
             <div class="followup-email-field">
                 <label for="followupEmailSubject">Subject</label>
@@ -1334,11 +1114,10 @@ foreach ($cases as $case) {
 
         row.querySelector('.monitoring-followup-cell').textContent = formatDate(newDate);
 
+        // Preserve the View Notes button. Replacing the whole cell text
+        // destroyed the button and broke subsequent notes interactions.
         const noteCell = row.querySelector('.monitoring-note-cell');
-        noteCell.textContent = newNote
-            ? (newNote.length > 90 ? newNote.substring(0, 90) + '...' : newNote)
-            : 'No notes yet.';
-        noteCell.title = newNote;
+        if (noteCell) noteCell.title = newNote;
 
         const notesButton = row.querySelector('.open-notes-modal');
         if (notesButton) {
@@ -1502,6 +1281,7 @@ function closeToast() {
 })();
 </script>
 
+<script src="../assets/js/counselor/email-sending.js?v=<?= (int) (@filemtime(__DIR__ . '/../assets/js/counselor/email-sending.js') ?: 0) ?>"></script>
 <script>
 (function () {
     const modal = document.getElementById('followupEmailModal');
@@ -1517,37 +1297,38 @@ function closeToast() {
     const feedback = document.getElementById('followupEmailFeedback');
     const submit = document.getElementById('submitFollowupEmail');
 
-    let currentStudent = 'Student';
-    let currentFollowupDate = '';
+    const emailUI = window.PTCEmailSending?.attach({form, message, feedback, submit, student: 'Student', counselor: <?= json_encode(ptcCounselorMailSenderName($conn) ?? 'Counselor', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>});
+    let sending = false;
+    let closeAfterSuccess = null;
 
+    // Body-only templates; PHP adds Dear <student alias> and the counselor signature.
     const templates = {
         general: {
-            subject: 'Follow-up from PTC Wellness Guidance Office',
-            message: () => 'Hello ' + currentStudent + ',\\n\\nI am reaching out from the PTC Wellness Guidance Office to check in and see how you are doing. If you would like to share an update or discuss any support you may need, you may reply to this email.\\n\\nRegards,\\nPTC Wellness Guidance Office'
+            subject: 'A Message from PTC Wellness Guidance Office',
+            message: 'I hope you are doing well. I am writing to check in and let you know that the Guidance Office is available should you wish to share an update or seek support.\n\nIf you would like to arrange a conversation, you may reply to this email at a time convenient for you. Please avoid including sensitive personal details in your reply.\n\nThank you for your time.'
         },
         appointment_invitation: {
-            subject: 'Counseling Appointment Invitation - PTC Wellness',
-            message: () => 'Hello ' + currentStudent + ',\\n\\nThe PTC Wellness Guidance Office would like to invite you to arrange a counseling appointment. Please reply to this email with your availability so we can discuss a suitable schedule.\\n\\nIf you have questions, feel free to reply.\\n\\nRegards,\\nPTC Wellness Guidance Office'
+            subject: 'Invitation to Arrange a Guidance Appointment | PTC Wellness',
+            message: 'We would like to invite you to arrange a private conversation with a guidance counselor. This is an opportunity to ask questions, discuss your concerns, and explore available support.\n\nIf you would like to schedule a meeting, please reply with your preferred days and times. We will confirm the schedule with you.\n\nThank you, and we look forward to hearing from you.'
         },
         appointment_reminder: {
-            subject: 'Counseling Appointment Reminder - PTC Wellness',
-            message: () => 'Hello ' + currentStudent + ',\\n\\nThis is a friendly reminder from the PTC Wellness Guidance Office regarding your counseling appointment' + (currentFollowupDate ? ' scheduled for ' + currentFollowupDate : '') + '. Please reply to this email if you need to confirm or discuss the schedule.\\n\\nRegards,\\nPTC Wellness Guidance Office'
+            subject: 'Guidance Appointment Reminder | PTC Wellness',
+            message: 'This is a reminder regarding your guidance appointment. Please refer to your confirmed appointment details for the correct schedule.\n\nIf you would like to confirm or reschedule, please reply to this email or contact the Guidance Office.\n\nThank you for your attention.'
         },
         additional_information: {
-            subject: 'Additional Information - PTC Wellness Guidance Office',
-            message: () => 'Hello ' + currentStudent + ',\\n\\nThe PTC Wellness Guidance Office is contacting you to ask if you could share some additional information related to your support request. Please only share information you are comfortable providing through this email, or let us know if you would prefer to discuss it privately with the counselor.\\n\\nThank you,\\nPTC Wellness Guidance Office'
+            subject: 'Request for a Brief Follow-up | PTC Wellness',
+            message: 'We would appreciate an opportunity to clarify a few details so that we can assist you appropriately.\n\nYou do not need to send private or sensitive information by email. You may instead request a confidential conversation with a counselor by replying to this message.\n\nThank you for your cooperation.'
         },
         student_support: {
-            subject: 'Student Support - PTC Wellness Guidance Office',
-            message: () => 'Hello ' + currentStudent + ',\\n\\nWe are reaching out from the PTC Wellness Guidance Office to remind you that support is available if you would like to talk about your concerns or discuss possible next steps. You are welcome to reply to this email to arrange a conversation.\\n\\nTake care,\\nPTC Wellness Guidance Office'
+            subject: 'Guidance and Student Support | PTC Wellness',
+            message: 'The PTC Wellness Guidance Office is available to provide guidance and support to students. If you would like to speak with a counselor or discuss the next steps, you are welcome to contact us.\n\nYou may reply to arrange a private conversation, and you may share only what you feel comfortable discussing by email.\n\nWe appreciate your time.'
         },
-        custom: { subject: '', message: () => '' }
+        custom: { subject: '', message: '' }
     };
-
     function applyTemplate() {
         const selected = templates[template.value] || templates.general;
         subject.value = selected.subject;
-        message.value = selected.message();
+        message.value = selected.message;
         if (template.value === 'custom') subject.focus();
         else message.focus();
     }
@@ -1555,8 +1336,12 @@ function closeToast() {
     template.addEventListener('change', applyTemplate);
 
     function closeModal() {
+        if (sending) return;
+        if (closeAfterSuccess !== null) window.clearTimeout(closeAfterSuccess);
+        closeAfterSuccess = null;
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
+        emailUI?.reset();
     }
 
     document.addEventListener('click', function (event) {
@@ -1565,9 +1350,10 @@ function closeToast() {
 
         referralId.value = button.dataset.referralId || '';
         recipient.value = button.dataset.email || '';
-        currentStudent = button.dataset.student || 'Student';
-        currentFollowupDate = button.dataset.followup || '';
-        studentLabel.textContent = 'Student: ' + currentStudent;
+        const currentStudent = button.dataset.studentAlias || 'Student';
+        studentLabel.textContent = 'Student: ' + (button.dataset.student || currentStudent);
+        emailUI?.setNames(currentStudent, <?= json_encode(ptcCounselorMailSenderName($conn), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>);
+        emailUI?.reset();
         template.value = 'general';
         applyTemplate();
 
@@ -1588,31 +1374,31 @@ function closeToast() {
 
     form.addEventListener('submit', async function (event) {
         event.preventDefault();
-        if (submit.disabled) return;
-
+        if (sending || submit.disabled) return;
+        sending = true;
         submit.disabled = true;
-        submit.textContent = 'Sending...';
+        submit.textContent = 'Sending…';
+        const payload = new FormData(form);
         feedback.textContent = '';
+        emailUI?.start();
         try {
             const response = await fetch('monitoring.php', {
                 method: 'POST',
-                body: new FormData(form),
+                body: payload,
                 headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
                 credentials: 'same-origin'
             });
             const raw = await response.text();
             let result;
             try { result = JSON.parse(raw); }
-            catch (e) { throw new Error('Unexpected server response. Check the PHP error log.'); }
-            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to send follow-up email.');
-
-            feedback.style.color = '#287345';
-            feedback.textContent = result.message || 'Follow-up email sent successfully.';
-            window.setTimeout(closeModal, 1500);
+            catch (e) { throw new Error('The server returned an unexpected response. Sending could not be confirmed.'); }
+            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to confirm the email was sent.');
+            emailUI?.succeed();
+            closeAfterSuccess = window.setTimeout(closeModal, 2600);
         } catch (error) {
-            feedback.style.color = '#b42318';
-            feedback.textContent = error.message || 'Unable to send follow-up email.';
+            emailUI?.fail(error.message);
         } finally {
+            sending = false;
             submit.disabled = false;
             submit.textContent = 'Send Email';
         }
@@ -1621,124 +1407,7 @@ function closeToast() {
 </script>
 
 <!-- Logout Confirmation Modal -->
-<style>
-    .logout-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, .58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
 
-    .logout-overlay.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-overlay.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-icon svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-</style>
 
 <div class="logout-overlay" id="logout-modal" aria-hidden="true">
     <section class="logout-dialog"
@@ -1832,5 +1501,18 @@ function closeToast() {
 })();
 </script>
 
+
+<script>
+(function () {
+  const dateEl=document.getElementById('monitoring-current-date');
+  const timeEl=document.getElementById('monitoring-current-time');
+  if(!dateEl||!timeEl)return;
+  const dateFmt=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'long',month:'short',day:'numeric',year:'numeric'});
+  const timeFmt=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',hour12:true});
+  const update=()=>{const now=new Date();dateEl.textContent=dateFmt.format(now);timeEl.textContent=timeFmt.format(now);};
+  update();window.setInterval(update,1000);
+})();
+</script>
+<script src="../assets/js/counselor/counselor-layout.js?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/counselor/counselor-layout.js') ?>" defer></script>
 </body>
 </html>

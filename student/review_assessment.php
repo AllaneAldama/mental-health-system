@@ -1,4 +1,3 @@
-
 <?php
 require_once __DIR__ . '/session.php';
 
@@ -17,10 +16,8 @@ $categories = [
 
 $allAnswers = $_SESSION['needs_assessment_answers'] ?? [];
 
-// Require all five categories to be completed.
 foreach ($categories as $category) {
-    if (!isset($allAnswers[$category]) ||
-        count($allAnswers[$category]) !== 11) {
+    if (!isset($allAnswers[$category]) || count($allAnswers[$category]) !== 11) {
         header("Location: needs_assessment.php");
         exit();
     }
@@ -29,7 +26,6 @@ foreach ($categories as $category) {
 require_once __DIR__ . '/../config/database.php';
 
 $questionIds = [];
-
 foreach ($allAnswers as $answers) {
     foreach ($answers as $questionId => $answer) {
         $questionIds[] = (int) $questionId;
@@ -37,7 +33,6 @@ foreach ($allAnswers as $answers) {
 }
 
 $questionIds = array_unique($questionIds);
-
 if (count($questionIds) !== 55) {
     exit("Assessment answers are incomplete.");
 }
@@ -57,7 +52,6 @@ $sql = "SELECT question_id, assessment_type, question_number, question_text
         ), question_number ASC";
 
 $stmt = $conn->prepare($sql);
-
 if (!$stmt) {
     exit("Unable to load the review page.");
 }
@@ -65,13 +59,11 @@ if (!$stmt) {
 $stmt->bind_param($types, ...$questionIds);
 $stmt->execute();
 $result = $stmt->get_result();
-
 $questionsByCategory = [];
 
 while ($row = $result->fetch_assoc()) {
     $questionsByCategory[$row['assessment_type']][] = $row;
 }
-
 $stmt->close();
 ?>
 <!DOCTYPE html>
@@ -79,104 +71,38 @@ $stmt->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Review Your Assessment</title>
-
     <link rel="stylesheet" href="../assets/css/student.css">
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet"
-    >
-
-    <style>
-        .review-wrapper {
-            width: min(900px, 92%);
-            margin: 35px auto;
-        }
-
-        .review-card {
-            background: #fff;
-            padding: 24px;
-            margin-bottom: 22px;
-            border-radius: 14px;
-            box-shadow: 0 3px 12px rgba(0,0,0,.07);
-        }
-
-        .review-question {
-            padding: 15px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .review-question:last-child {
-            border-bottom: none;
-        }
-
-        .review-answer {
-            margin-top: 8px;
-            color: #426b40;
-            font-weight: 600;
-            overflow-wrap: anywhere;
-        }
-
-        .review-actions {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin: 24px 0;
-        }
-
-        .review-actions a,
-        .review-actions button {
-            display: inline-block;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            text-decoration: none;
-            font: inherit;
-            cursor: pointer;
-        }
-
-        .back-btn {
-            background: #eee;
-            color: #222;
-        }
-
-        .submit-btn {
-            background: #5E8B59;
-            color: #fff;
-        }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/students/css/review-assessment.css">
+    <link rel="stylesheet" href="../assets/students/css/student-progress.css">
+    <script src="../assets/js/student-progress.js" defer></script>
+    <script src="../assets/js/assessment-submission.js" defer></script>
 </head>
-<body>
+<body class="review-assessment-page">
+<?php
+$studentProgressStep = 5;
+$studentProgressTotal = 6;
+include __DIR__ . '/student-progress.php';
+?>
+
 <div class="review-wrapper needs-review">
     <h1>Review Your Assessment</h1>
-    <p>
-        Please review your answers before submitting your
-        Needs Assessment Survey.
-    </p>
+    <p>Please review your answers before submitting your Needs Assessment Survey.</p>
 
     <?php foreach ($categories as $category): ?>
         <section class="review-card">
             <h2><?= htmlspecialchars($category) ?></h2>
-
             <?php foreach (($questionsByCategory[$category] ?? []) as $question): ?>
                 <?php
                 $questionId = (int) $question['question_id'];
                 $answer = $allAnswers[$category][$questionId] ?? null;
-                if (!$answer) {
-                    continue;
-                }
-
+                if (!$answer) continue;
                 $questionText = $question['question_text'];
                 $questionNumber = (int) $question['question_number'];
                 ?>
                 <div class="review-question">
-                    <p>
-                        <strong><?= $questionNumber ?>.</strong>
-                        <?= htmlspecialchars($questionText) ?>
-                    </p>
-
+                    <p><strong><?= $questionNumber ?>.</strong> <?= htmlspecialchars($questionText) ?></p>
                     <div class="review-answer">
                         <?php if ($questionNumber <= 10): ?>
                             <?php
@@ -191,9 +117,7 @@ $stmt->close();
                             echo htmlspecialchars($labels[$score] ?? 'Invalid answer');
                             ?>
                         <?php else: ?>
-                            <?= nl2br(htmlspecialchars(
-                                $answer['answer_text'] ?? 'No response provided'
-                            )) ?>
+                            <?= nl2br(htmlspecialchars($answer['answer_text'] ?? 'No response provided')) ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -202,16 +126,63 @@ $stmt->close();
     <?php endforeach; ?>
 
     <div class="review-actions">
-        <a class="back-btn" href="needs_assessment.php?category=4">
-            Back to Survey
-        </a>
-
-        <form action="submit_assessment.php" method="POST">
-            <button class="submit-btn" type="submit">
+        <a class="back-btn" href="needs_assessment.php?category=4">Back to Survey</a>
+        <form id="assessment-submit-form" action="submit_assessment.php" method="POST">
+            <button class="submit-btn" id="assessment-submit-button" type="submit">
                 Submit Assessment
             </button>
         </form>
     </div>
+</div>
+
+<!-- Submission progress modal -->
+<div class="submission-modal" id="submission-modal" aria-hidden="true">
+    <div class="submission-modal__backdrop"></div>
+    <section class="submission-modal__panel" role="dialog" aria-modal="true" aria-labelledby="submission-modal-title">
+        <div class="submission-mail" id="submission-mail" aria-hidden="true">
+            <div class="submission-mail__glow"></div>
+            <div class="submission-mail__envelope">
+                <span class="submission-mail__flap"></span>
+                <span class="submission-mail__letter"></span>
+                <span class="submission-mail__plane">➤</span>
+            </div>
+            <div class="submission-mail__success">✓</div>
+        </div>
+
+        <p class="submission-modal__eyebrow">PTC WELLNESS</p>
+        <h2 id="submission-modal-title">Submitting Your Assessment</h2>
+        <p class="submission-modal__description" id="submission-modal-description">
+            Please wait while we save your responses and process your confirmation email.
+        </p>
+
+        <div class="submission-stages" aria-live="polite">
+            <div class="submission-stage is-active" data-stage="save">
+                <span class="submission-stage__icon">1</span>
+                <span class="submission-stage__label">Saving assessment</span>
+                <span class="submission-stage__state">In progress</span>
+            </div>
+            <div class="submission-stage" data-stage="email">
+                <span class="submission-stage__icon">2</span>
+                <span class="submission-stage__label">Sending confirmation email</span>
+                <span class="submission-stage__state">Waiting</span>
+            </div>
+            <div class="submission-stage" data-stage="finish">
+                <span class="submission-stage__icon">3</span>
+                <span class="submission-stage__label">Finalizing submission</span>
+                <span class="submission-stage__state">Waiting</span>
+            </div>
+        </div>
+
+        <div class="submission-progress" aria-hidden="true">
+            <span id="submission-progress-fill"></span>
+        </div>
+        <p class="submission-modal__footnote" id="submission-modal-footnote">
+            Please keep this page open until the process is complete.
+        </p>
+        <button class="submission-continue" id="submission-continue" type="button" hidden>
+            Continue to Thank You
+        </button>
+    </section>
 </div>
 </body>
 </html>

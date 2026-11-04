@@ -1,0 +1,107 @@
+/* PTC WELLNESS | Counselor shared components | Gmail-centered idle rail v18
+   Owns ONLY sidebar, topbar, footer and notifications.
+   Dashboard and Queue own their content layouts and animations. */
+:root{--shell-green:#167646;--shell-ink:#153e2a;--shell-muted:#627468;--shell-line:#e0eae2;--shell-rail:76px;--shell-expanded:258px;--shell-top:76px}
+.counselor-workspace{min-width:0;min-height:100vh;margin-left:var(--shell-rail)}
+.counselor-sidebar{box-sizing:border-box;position:fixed;z-index:1050;left:0;top:var(--shell-top);bottom:0;display:flex;flex-direction:column;width:var(--shell-expanded);padding:16px 10px;overflow:hidden auto;clip-path:inset(0 calc(var(--shell-expanded) - var(--shell-rail)) 0 0);background:#fff;color:#253d30;border-right:1px solid var(--shell-line);box-shadow:5px 0 19px rgba(29,70,42,.045);transition:clip-path .26s cubic-bezier(.2,.8,.2,1),box-shadow .26s ease;scrollbar-width:none}
+.counselor-sidebar::-webkit-scrollbar{display:none}
+.counselor-sidebar a{color:inherit;text-decoration:none}
+.counselor-brand{display:flex;align-items:center;gap:26px;min-height:62px;margin:0 2px 19px;white-space:nowrap}
+.counselor-brand-mark{display:grid;flex:0 0 48px;width:48px;height:48px;place-items:center;border-radius:14px;background:#eaf7ed;color:#117644}
+.counselor-brand-mark svg,.counselor-wellbeing-decoration svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.counselor-brand-copy{display:block;min-width:0;max-width:175px;visibility:visible;opacity:1;overflow:visible}
+.counselor-brand-copy strong{display:block;color:#123c28;font-size:1rem;letter-spacing:-.035em}
+.counselor-brand-copy small{display:block;color:#687c6d;font-size:.65rem;line-height:1.45;white-space:normal}
+.counselor-nav{display:flex;flex-direction:column;gap:5px}
+/* Keep full internal row geometry even when the visible rail is 76px. */
+.counselor-nav-link{position:relative;isolation:isolate;display:flex;align-items:center;gap:31px;min-height:49px;padding:10px 15px;border-radius:13px;font-size:.83rem;font-weight:650;white-space:nowrap;transition:color .16s ease}
+/* Gmail-like 54x49 icon pill in idle mode. The highlight grows independently
+   of icon and text layout, so nothing gets reconstructed or shifted. */
+.counselor-nav-link::before{content:"";position:absolute;z-index:-1;inset:0 auto 0 0;width:54px;border-radius:14px;background:transparent;transition:width .26s cubic-bezier(.2,.8,.2,1),background-color .16s ease}
+.counselor-nav-link:is(:hover,:focus-visible)::before{background:#eef7ef}
+.counselor-nav-link.is-active::before{background:#daf0de}
+.counselor-nav-link:hover,.counselor-logout-link:hover{color:#176e41}
+.counselor-logout-link:hover{background:#eef7ef}
+.counselor-nav-link.is-active{background:transparent;color:#0c6b3b}
+.counselor-nav-icon,.counselor-logout-link>span:first-child{position:relative;z-index:1;display:grid;flex:0 0 26px;width:26px;height:26px;place-items:center}
+.counselor-nav-icon svg,.counselor-logout-link svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.counselor-nav-text{position:relative;z-index:1;display:block;flex:0 0 auto;max-width:170px;visibility:visible;opacity:1;overflow:visible}
+.counselor-logout-text{display:block;flex:0 0 auto;white-space:nowrap}
+.counselor-sidebar-bottom{margin-top:auto;min-width:0;padding-top:16px}
+.counselor-wellbeing-note{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;padding:13px;border-radius:13px;background:#f0f8f1;border:1px solid #e3eee4;color:#193d2a}
+.counselor-wellbeing-note strong{font-size:.78rem}.counselor-wellbeing-note>span:last-child{font-size:.68rem;line-height:1.5;color:#647768}
+.counselor-wellbeing-decoration{color:#16804c}
+.counselor-logout-link{display:flex;align-items:center;gap:31px;min-height:49px;padding:10px 15px;border-radius:12px;font-size:.83rem;white-space:nowrap}
+/* Desktop rail: fixed 258px internal layout; reveal by clipping only.
+   Text/icons NEVER reflow or fade as the visible region expands. */
+@media (min-width:901px){
+  /* The note keeps its layout space when collapsed, but no partial box/text
+     can bleed into the rail. Only reveal it when sidebar is fully expanded. */
+  /* Wait for the panel to reveal fully, then show COMPLETE labels together.
+     This prevents the letter-by-letter 'text constructing' seen in the video. */
+  .counselor-brand-copy,.counselor-nav-text,.counselor-logout-text,
+  .counselor-wellbeing-note {visibility:hidden;transition:visibility 0s linear 0s}
+  .counselor-sidebar:is(:hover,:focus-within) .counselor-nav-link::before,
+  body.counselor-sidebar-pinned .counselor-nav-link::before{width:100%;border-radius:13px}
+  .counselor-sidebar:is(:hover,:focus-within),
+  body.counselor-sidebar-pinned .counselor-sidebar{
+    clip-path:inset(0 0 0 0);
+    box-shadow:9px 0 25px rgba(25,65,39,.11);
+  }
+  .counselor-sidebar:is(:hover,:focus-within) .counselor-brand-copy,
+  .counselor-sidebar:is(:hover,:focus-within) .counselor-nav-text,
+  .counselor-sidebar:is(:hover,:focus-within) .counselor-logout-text,
+  .counselor-sidebar:is(:hover,:focus-within) .counselor-wellbeing-note,
+  body.counselor-sidebar-pinned .counselor-brand-copy,
+  body.counselor-sidebar-pinned .counselor-nav-text,
+  body.counselor-sidebar-pinned .counselor-logout-text,
+  body.counselor-sidebar-pinned .counselor-wellbeing-note{
+    visibility:visible;transition-delay:.26s;
+  }
+}
+
+.counselor-topbar{box-sizing:border-box;position:sticky;top:0;z-index:1200;display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:var(--shell-top);width:calc(100% + var(--shell-rail));margin-left:calc(-1 * var(--shell-rail));padding:10px clamp(16px,2vw,32px);background:rgba(255,255,255,.98);border-bottom:1px solid var(--shell-line);box-shadow:0 3px 14px rgba(28,65,41,.035);backdrop-filter:blur(12px)}
+.counselor-topbar-left,.counselor-topbar-actions{display:flex;align-items:center;gap:13px;min-width:0}.counselor-topbar-actions{margin-left:auto}
+.counselor-mobile-menu-toggle{display:grid;flex:0 0 40px;width:40px;height:40px;place-items:center;border:0;border-radius:12px;background:transparent;color:#1c5439;cursor:pointer}
+.counselor-mobile-menu-toggle:hover{background:#eaf5ec}.counselor-mobile-menu-toggle svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.counselor-topbar-brand-icon{display:grid;flex:0 0 38px;width:38px;height:38px;place-items:center;border-radius:12px;background:#eaf7ed;color:#13804a}.counselor-topbar-brand-icon svg{width:25px;height:25px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.counselor-topbar-heading{display:flex;flex-direction:column;gap:2px;min-width:0}.counselor-topbar-heading strong{font-size:.94rem;font-weight:800;color:#173e2b}.counselor-topbar-heading>span{font-size:.68rem;color:#718176;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.counselor-mobile-brand-title,.counselor-mobile-portal-subtitle{display:none}
+.counselor-account-link{display:flex;align-items:center;gap:9px;text-decoration:none;color:#173e2b;border-radius:12px;padding:4px}.counselor-account-link:hover{background:#f0f7f1}
+.counselor-account-avatar{display:grid;flex:0 0 38px;width:38px;height:38px;place-items:center;border-radius:50%;background:#0c7341;color:#fff;font-weight:800}
+.counselor-account-copy{display:flex;flex-direction:column;gap:2px;min-width:0}.counselor-account-copy strong{font-size:.76rem;white-space:nowrap}.counselor-account-copy small{font-size:.65rem;color:#718176;max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.counselor-notification-wrap{position:relative}.counselor-notification-button{position:relative;display:grid;width:39px;height:39px;place-items:center;border:0;border-radius:12px;background:transparent;color:#22553a;cursor:pointer}.counselor-notification-button:hover{background:#eaf6ee}.counselor-notification-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.counselor-notification-indicator{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#d79e24;border:1px solid white}.counselor-notification-count{position:absolute;right:0;top:0;min-width:16px;padding:1px 3px;border-radius:999px;background:#ad4638;color:#fff;font-size:9px;text-align:center}
+.counselor-notification-panel{position:absolute;top:calc(100% + 8px);right:0;width:min(380px,calc(100vw - 24px));max-height:min(500px,75vh);display:flex;flex-direction:column;z-index:1300;overflow:hidden;border:1px solid var(--shell-line);border-radius:16px;background:#fff;box-shadow:0 15px 40px rgba(15,55,33,.16)}
+.counselor-notification-panel[hidden],.counselor-sidebar-backdrop[hidden],.counselor-notification-indicator[hidden],.counselor-notification-count[hidden]{display:none!important}
+.notification-panel-header,.notification-panel-tools{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 15px;border-bottom:1px solid var(--shell-line)}.notification-panel-header strong{display:block;font-size:.9rem}.notification-panel-header small,.notification-panel-tools{font-size:.7rem;color:var(--shell-muted)}.notification-panel-header button,.notification-panel-tools button{border:0;background:transparent;color:#216f42;cursor:pointer;font:inherit}.notification-panel-header button{font-size:24px}
+.notification-panel-list{overflow:auto;padding:6px}.notification-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px;border-radius:10px}.notification-item.is-unread{background:#edf8ee}.notification-item-copy{min-width:0}.notification-item-title{display:block;font-size:.76rem;font-weight:700;color:#145b35}.notification-item-copy small{display:block;color:#75877a;font-size:.66rem}.notification-read-button{border:1px solid #c5e2cb;border-radius:8px;padding:7px;background:#fff;color:#176e3f;font-size:.65rem;cursor:pointer}.notification-panel-empty,.notification-panel-error{font-size:.74rem;padding:14px;color:#718176}.notification-panel-footer{display:block;padding:12px 15px;border-top:1px solid var(--shell-line);color:#146e40;font-size:.75rem;font-weight:700}
+.counselor-shared-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:23px clamp(18px,2.35vw,34px) 0;padding:17px 0 23px;border-top:1px solid var(--shell-line);font-size:.68rem;color:#708275}.counselor-footer-ident{display:inline-flex;align-items:center;gap:7px}.counselor-footer-brand-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#24864d}
+.counselor-nav-link:focus-visible,.counselor-mobile-menu-toggle:focus-visible,.counselor-account-link:focus-visible,.counselor-logout-link:focus-visible,.counselor-notification-button:focus-visible{outline:3px solid #7ac994;outline-offset:2px}
+@media (max-width:900px){
+ .counselor-workspace{margin-left:0;width:100%}
+ .counselor-topbar{width:100%;margin-left:0;min-height:70px;padding:10px 16px}
+ .counselor-brand{gap:12px;min-height:62px}
+ .counselor-nav-link,.counselor-logout-link{gap:15px}
+ .counselor-nav-link::before{width:100%;border-radius:13px;transition:background-color .16s ease}
+ .counselor-logout-text{visibility:visible;transition:none}
+ .counselor-wellbeing-note{visibility:visible;transition:none}
+ .counselor-sidebar{top:0;bottom:0;width:min(290px,86vw);clip-path:none;padding:22px 13px;transform:translateX(-105%);will-change:transform;transition:transform .34s cubic-bezier(.22,1,.36,1);z-index:1350;box-shadow:12px 0 30px rgba(14,56,31,.18)}
+ body.counselor-menu-open .counselor-sidebar{transform:translateX(0)}
+ /* Keep the backdrop mounted on mobile so opening AND closing can animate. */
+ .counselor-sidebar-backdrop:not([hidden]){position:fixed;inset:0;z-index:1300;display:block;background:rgba(12,35,22,.48);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .3s ease,visibility .3s ease}
+ body.counselor-menu-open .counselor-sidebar-backdrop:not([hidden]){opacity:1;visibility:visible;pointer-events:auto}
+ /* Anchor notifications to the PHONE viewport, not the notification bell. */
+ .counselor-notification-panel{position:fixed;left:12px;right:12px;top:calc(70px + env(safe-area-inset-top, 0px) + 8px);width:auto;max-width:none;max-height:min(540px,calc(100dvh - 94px - env(safe-area-inset-bottom, 0px)));border-radius:16px;box-sizing:border-box;overscroll-behavior:contain}
+ .notification-panel-header,.notification-panel-tools{flex-shrink:0}
+ .notification-panel-list{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+ .notification-item-copy,.notification-item-title{overflow-wrap:anywhere}
+ .notification-item{align-items:flex-start}
+ .notification-panel-footer{flex-shrink:0}
+
+ .counselor-brand-copy,.counselor-nav-text{max-width:none;visibility:visible;opacity:1}
+ .counselor-wellbeing-note{display:flex}.counselor-logout-link{font-size:.82rem}
+ .counselor-topbar-brand-icon{flex-basis:34px;width:34px;height:34px}.counselor-topbar-brand-icon svg{width:22px;height:22px}
+}
+@media (max-width:600px){.counselor-desktop-portal-title,.counselor-desktop-portal-subtitle{display:none!important}.counselor-mobile-brand-title{display:block!important;font-size:.9rem!important;white-space:nowrap}.counselor-mobile-portal-subtitle{display:none!important}.counselor-topbar{min-height:68px;padding:9px 13px;gap:8px}.counselor-topbar-left,.counselor-topbar-actions{gap:6px}.counselor-topbar-heading strong{font-size:.78rem}.counselor-topbar-heading>span{font-size:.61rem;max-width:38vw}.counselor-account-avatar{flex-basis:34px;width:34px;height:34px}.counselor-account-copy{display:none}.counselor-notification-button{width:34px;height:34px}.counselor-notification-panel{top:calc(68px + env(safe-area-inset-top, 0px) + 8px)}.counselor-shared-footer{flex-direction:column;align-items:flex-start;margin:20px 17px 0}}
+@media (prefers-reduced-motion:reduce){.counselor-sidebar,.counselor-sidebar-backdrop,.counselor-brand-copy,.counselor-nav-text,.counselor-wellbeing-note{transition:none!important}}

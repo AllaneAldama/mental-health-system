@@ -1,0 +1,89 @@
+/* PTC WELLNESS — MONITORING | Mobile/tablet only, loaded <=900px.
+   Shared hamburger, topbar, sidebar, notification panel and footer are untouched.
+   No desktop shell selectors and no backend/JS changes. */
+@media(max-width:900px){
+ body.monitoring-page .main-content {max-width:100%;width:100%;min-width:0;padding:24px clamp(18px,3.5vw,32px) 32px}
+ body.monitoring-page .page-header {flex-direction:column;align-items:flex-start;gap:15px;min-height:0;margin-bottom:17px;padding:26px;border-radius:23px}
+ body.monitoring-page .page-heading,body.monitoring-page .header-right {min-width:0;width:100%}
+ body.monitoring-page .monitoring-title {font-size:clamp(1.85rem,4.2vw,2.4rem);line-height:1.17}
+ body.monitoring-page .monitoring-eyebrow {font-size:.7rem}
+ body.monitoring-page .monitoring-subtitle {font-size:.84rem;line-height:1.65}
+ body.monitoring-page .header-right {justify-content:flex-start}
+ body.monitoring-page .datetime-card {min-height:40px;flex-wrap:wrap;gap:9px;padding:10px 12px}
+ body.monitoring-page .datetime-item {font-size:.72rem}
+ body.monitoring-page .datetime-icon svg {width:19px;height:19px}
+ body.monitoring-page .datetime-divider {height:20px}
+ body.monitoring-page .monitoring-stats {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:17px}
+ body.monitoring-page .monitoring-stat {min-height:145px;padding:18px;border-radius:18px}
+ body.monitoring-page .monitoring-stat-label {font-size:.8rem}
+ body.monitoring-page .monitoring-stat>strong {font-size:2.2rem}
+ body.monitoring-page .monitoring-stat>small {font-size:.71rem}
+ body.monitoring-page .monitoring-panel {padding:22px;border-radius:21px}
+ body.monitoring-page .monitoring-panel-heading h2 {font-size:1.12rem}
+ body.monitoring-page .monitoring-panel-heading p {font-size:.77rem}
+ /* Record table becomes a semantic card grid; desktop table remains unchanged. */
+ body.monitoring-page .monitoring-table-wrap {min-width:0;overflow:visible;border:0;background:transparent;border-radius:0}
+ body.monitoring-page .monitoring-table {display:block;width:100%;min-width:0;table-layout:auto;background:transparent}
+ body.monitoring-page .monitoring-table thead {display:none}
+ body.monitoring-page .monitoring-table tbody {display:grid;gap:14px;width:100%}
+ body.monitoring-page .monitoring-table tbody tr {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px;width:100%;min-width:0;overflow:hidden;padding:0 14px 14px;border:1px solid #dfe9df;border-radius:17px;background:#fff;box-shadow:0 6px 16px rgba(23,69,39,.04)}
+ body.monitoring-page .monitoring-table tbody tr:hover {background:#fff}
+ body.monitoring-page .monitoring-table tbody tr:has(.monitoring-empty) {display:block;padding:0}
+ body.monitoring-page .monitoring-table td {display:block;min-width:0;min-height:0;margin:0;padding:13px 0;border:0;border-bottom:1px solid #edf2ed;text-align:left;font-size:.8rem;line-height:1.55;overflow-wrap:anywhere;word-break:normal}
+ body.monitoring-page .monitoring-table td::before {display:block;content:attr(data-label);margin:0 0 6px;color:#738378;font-size:.70rem;font-weight:750;line-height:1.4;letter-spacing:.01em}
+ body.monitoring-page .monitoring-table td:first-child {grid-column:1/-1;order:0;margin:0 -14px 2px;padding:16px 14px;background:linear-gradient(105deg,#edf7ec,#f9fcf8);border-bottom:1px solid #e1ebe1}
+ body.monitoring-page .monitoring-table td:first-child::before {display:none}
+ body.monitoring-page .monitoring-student-name {font-size:.94rem;line-height:1.4}
+ body.monitoring-page .monitoring-table td:nth-child(2) {grid-column:1;order:1}
+ body.monitoring-page .monitoring-table td:nth-child(4) {grid-column:2;order:2}
+ body.monitoring-page .monitoring-table td:nth-child(3) {grid-column:1/-1;order:3}
+ body.monitoring-page .monitoring-table td:nth-child(5) {grid-column:1/-1;order:4}
+ body.monitoring-page .monitoring-table td:nth-child(6) {grid-column:1;order:5;text-align:center}
+ body.monitoring-page .monitoring-table td:nth-child(7) {grid-column:2;order:6;text-align:center}
+ body.monitoring-page .monitoring-table td:nth-child(8) {grid-column:1/-1;order:7;padding:15px 0 0;border:0}
+ body.monitoring-page .monitoring-table td:last-child::before {display:none}
+ body.monitoring-page .monitoring-table td :is(strong,small,span,a) {max-width:100%}
+ body.monitoring-page .monitoring-table .monitoring-counselor-name+small,
+ body.monitoring-page .monitoring-table .monitoring-appointment-cell small,
+ body.monitoring-page .monitoring-table .monitoring-note-count {display:block;grid-column:auto;margin:5px 0 0;overflow-wrap:anywhere}
+ body.monitoring-page .monitoring-table .monitoring-badge {width:max-content;max-width:100%;justify-content:flex-start;white-space:normal}
+ body.monitoring-page .monitoring-table .monitoring-schedule-status {display:inline-block;width:fit-content}
+ body.monitoring-page .monitoring-table .monitoring-note-cell {min-width:0}
+ body.monitoring-page .monitoring-table .monitoring-note-cell .monitoring-button {width:100%;min-height:39px}
+ body.monitoring-page .monitoring-table .monitoring-note-count {font-size:.68rem}
+ body.monitoring-page .monitoring-action-group {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ body.monitoring-page .monitoring-action-group .monitoring-button {width:100%;min-width:0;min-height:44px;font-size:.73rem;padding:8px 9px;line-height:1.4;white-space:normal}
+ body.monitoring-page .monitoring-action-group .monitoring-button:only-child {grid-column:1/-1}
+ body.monitoring-page .monitoring-empty {display:block!important;padding:30px 18px!important}
+ body.monitoring-page .monitoring-empty::before {display:none}
+ body.monitoring-page .monitoring-modal-card,body.monitoring-page .followup-email-card {max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
+}
+@media(max-width:600px){
+ body.monitoring-page .main-content {padding:17px 13px 27px}
+ body.monitoring-page .page-header {padding:21px 18px;border-radius:19px}
+ body.monitoring-page .monitoring-title {font-size:clamp(1.75rem,7vw,2rem)}
+ body.monitoring-page .datetime-card {max-width:100%;width:100%;justify-content:space-between;gap:7px;padding:10px}
+ body.monitoring-page .datetime-item {font-size:.67rem;gap:5px}
+ body.monitoring-page .datetime-icon {width:17px;height:17px;flex-basis:17px}
+ body.monitoring-page .datetime-icon svg {width:17px;height:17px}
+ body.monitoring-page .monitoring-stat {padding:15px;min-height:136px}
+ body.monitoring-page .monitoring-stat-label {font-size:.76rem}
+ body.monitoring-page .monitoring-stat>strong {font-size:2rem}
+ body.monitoring-page .monitoring-stat>small {font-size:.68rem}
+ body.monitoring-page .monitoring-panel {padding:16px;border-radius:18px}
+ body.monitoring-page .monitoring-panel-heading {flex-wrap:wrap;gap:6px 12px}
+ body.monitoring-page .monitoring-record-count {padding:6px 9px;font-size:.71rem}
+ body.monitoring-page .monitoring-modal,body.monitoring-page .followup-email-overlay {padding:10px}
+ body.monitoring-page .monitoring-modal-card,body.monitoring-page .followup-email-card {width:100%;max-height:calc(100dvh - 20px);padding:19px;border-radius:17px}
+ body.monitoring-page .monitoring-form-grid {grid-template-columns:1fr}
+ body.monitoring-page .monitoring-field.full {grid-column:auto}
+ body.monitoring-page .monitoring-form-actions button {flex:1}
+ body.monitoring-page .followup-email-field textarea {min-height:155px}
+ body.monitoring-page .followup-email-actions button {flex:1}
+}
+@media(max-width:360px){
+ body.monitoring-page .monitoring-stats {gap:9px}
+ body.monitoring-page .monitoring-stat {padding:12px}
+ body.monitoring-page .datetime-card {flex-wrap:wrap}
+ body.monitoring-page .datetime-divider {display:none}
+}

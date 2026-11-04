@@ -1,0 +1,205 @@
+/* =====================================================================
+   PTC WELLNESS | DASHBOARD — COORDINATED MOBILE REDESIGN v10
+   Standalone mobile stylesheet loaded after dashboard.css at <=900px.
+   Shared slide-out sidebar/topbar remains controlled by layout.css/JS.
+   ===================================================================== */
+@media (max-width: 900px) {
+  body.counselor-page.dashboard-page {
+    --dm-ink:#163d29;
+    --dm-muted:#627869;
+    --dm-line:#e1ebe1;
+    --dm-surface:#fff;
+    --dm-shadow:0 8px 26px rgba(24,68,40,.055);
+    color:var(--dm-ink);
+    background:radial-gradient(circle at 96% 8%,#e6f1e4,transparent 330px),#f5f9f4;
+  }
+
+body.counselor-page.dashboard-page .main-content { width:100%; max-width:100%; min-width:0; padding:24px clamp(18px,3.5vw,32px) 32px; }
+  body.counselor-page.dashboard-page .page-header.dashboard-hero {
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:15px;
+    min-height:0;
+    margin:0 0 17px;
+    padding:26px;
+    border:1px solid #dfebdf;
+    border-radius:23px;
+    background:linear-gradient(118deg,#fbfefa 2%,#f0f8ed 67%,#e3f0e0);
+    box-shadow:var(--dm-shadow);
+    overflow:hidden;
+  }
+  body.counselor-page.dashboard-page .page-header > * { position:relative; z-index:1; }
+  body.counselor-page.dashboard-page .page-heading { width:100%; min-width:0; }
+  body.counselor-page.dashboard-page .eyebrow { margin:0 0 7px; color:#397b50; font-size:.7rem; font-weight:800; letter-spacing:.11em; }
+  body.counselor-page.dashboard-page .page-title { margin:0 0 8px; color:var(--dm-ink); font-size:clamp(1.85rem,4.2vw,2.4rem); line-height:1.17; letter-spacing:-.05em; }
+  body.counselor-page.dashboard-page .page-subtitle { margin:0; color:#54705c; font-size:.84rem; line-height:1.65; }
+  body.counselor-page.dashboard-page .header-right { display:flex; flex-direction:row; align-items:center; justify-content:flex-start; width:100%; gap:10px; }
+  body.counselor-page.dashboard-page .datetime-card { display:inline-flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; width:max-content; max-width:100%; min-height:40px; gap:9px; padding:10px 12px; border:1px solid #e2ebe0; border-radius:13px; background:#fff; color:#375742; box-shadow:0 3px 11px rgba(24,68,40,.04); }
+  body.counselor-page.dashboard-page .datetime-item { display:inline-flex; flex:0 1 auto; align-items:center; gap:6px; color:#375742; font-size:.72rem; font-weight:600; line-height:1.35; white-space:nowrap; }
+  body.counselor-page.dashboard-page .datetime-icon { display:inline-flex; flex:0 0 20px; width:20px; height:20px; align-items:center; justify-content:center; color:#2a6e46; }
+  body.counselor-page.dashboard-page .datetime-icon svg { display:block; width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; }
+  body.counselor-page.dashboard-page .datetime-divider { display:block; flex:0 0 1px; width:1px; height:20px; background:#dae7dc; }
+  body.counselor-page.dashboard-page .header-status { display:none; }
+
+  body.counselor-page.dashboard-page .metric-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin:0 0 17px; }
+  body.counselor-page.dashboard-page .metric-card { min-width:0; min-height:145px; padding:18px; border:1px solid #deebde; border-radius:18px; background:linear-gradient(145deg,#fff,#eff8ef); box-shadow:var(--dm-shadow); }
+  body.counselor-page.dashboard-page .metric-card:nth-child(2) { background:linear-gradient(145deg,#fff,#edf6fd); border-color:#dce8f0; }
+  body.counselor-page.dashboard-page .metric-card:nth-child(3) { background:linear-gradient(145deg,#fff,#f5effb); border-color:#e9def1; }
+  body.counselor-page.dashboard-page .metric-card:nth-child(4) { background:linear-gradient(145deg,#fff,#f2f8ed); }
+  body.counselor-page.dashboard-page .metric-card::after { opacity:.38; }
+  body.counselor-page.dashboard-page .metric-top { display:flex; flex-direction:row; align-items:flex-start; justify-content:space-between; gap:8px; }
+  body.counselor-page.dashboard-page .metric-label { max-width:unset; color:#536c5d; font-size:.8rem; font-weight:700; line-height:1.45; }
+  body.counselor-page.dashboard-page .metric-symbol { flex:0 0 37px; width:37px; height:37px; border-radius:12px; }
+  body.counselor-page.dashboard-page .metric-symbol svg { display:block; width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; }
+  body.counselor-page.dashboard-page .metric-value { margin:12px 0 3px; color:#184d31; font-size:2.2rem; font-weight:800; line-height:1.1; }
+  body.counselor-page.dashboard-page .metric-hint { color:#748479; font-size:.71rem; line-height:1.5; }
+
+  body.counselor-page.dashboard-page .dashboard-analysis-grid,
+  body.counselor-page.dashboard-page .dashboard-detail-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; margin:0 0 16px; }
+  body.counselor-page.dashboard-page .dashboard-analysis-grid > *,
+  body.counselor-page.dashboard-page .dashboard-detail-grid > * { min-width:0; }
+  body.counselor-page.dashboard-page .system-panel,
+  body.counselor-page.dashboard-page .dashboard-analysis-grid .system-panel,
+  body.counselor-page.dashboard-page .dashboard-detail-grid .system-panel,
+  body.counselor-page.dashboard-page .quick-panel { padding:22px; margin:0; border:1px solid var(--dm-line); border-radius:21px; background:#fff; box-shadow:var(--dm-shadow); }
+  body.counselor-page.dashboard-page .section-heading { display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:15px; }
+  body.counselor-page.dashboard-page .system-panel h2 { color:#123a26; font-size:1.15rem; line-height:1.3; font-weight:800; }
+  body.counselor-page.dashboard-page .section-description { color:#6c8071; font-size:.77rem; line-height:1.6; }
+  body.counselor-page.dashboard-page .trend-chart { max-width:100%; overflow:hidden; }
+  body.counselor-page.dashboard-page .trend-chart svg { display:block; width:100%; max-height:280px; height:auto; }
+  body.counselor-page.dashboard-page .workflow-status-list { display:grid; gap:9px; }
+  body.counselor-page.dashboard-page .workflow-status-row { display:grid; grid-template-columns:38px minmax(0,1fr) auto; align-items:center; gap:11px; min-height:66px; padding:12px; border-radius:13px; }
+  body.counselor-page.dashboard-page .workflow-status-row .workflow-status-icon { width:37px; height:37px; }
+  body.counselor-page.dashboard-page .workflow-status-row strong { font-size:.81rem; }
+  body.counselor-page.dashboard-page .workflow-status-row small { font-size:.69rem; }
+  body.counselor-page.dashboard-page .workflow-status-row b { font-size:1.05rem; }
+  body.counselor-page.dashboard-page .quick-panel { margin-bottom:16px; }
+  body.counselor-page.dashboard-page .quick-panel .monitoring-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  body.counselor-page.dashboard-page .quick-panel .monitoring-card { display:flex; flex-direction:row; align-items:center; gap:10px; min-width:0; min-height:84px; padding:13px; border:1px solid #e0ebdf; border-radius:14px; background:#f7fbf6; box-shadow:none; }
+  body.counselor-page.dashboard-page .quick-panel .monitoring-symbol { flex:0 0 36px; width:36px; height:36px; border-radius:11px; font-size:19px; }
+  body.counselor-page.dashboard-page .quick-panel h3 { margin:0; color:#204b34; font-size:.76rem; line-height:1.35; }
+  body.counselor-page.dashboard-page .quick-panel p { margin:4px 0 0; color:#708374; font-size:.68rem; line-height:1.5; }
+  body.counselor-page.dashboard-page .page-footer { display:flex; flex-wrap:wrap; gap:5px 14px; color:#839187; font-size:.69rem; }
+}
+
+@media (max-width: 600px) {
+  body.counselor-page.dashboard-page .main-content { padding:15px 12px 28px; }
+  body.counselor-page.dashboard-page .page-header.dashboard-hero { gap:12px; margin-bottom:13px; padding:21px 17px; border-radius:18px; }
+  body.counselor-page.dashboard-page .page-title { font-size:1.84rem; margin-bottom:7px; }
+  body.counselor-page.dashboard-page .eyebrow { font-size:.62rem; }
+  body.counselor-page.dashboard-page .page-subtitle { font-size:.76rem; line-height:1.6; }
+  body.counselor-page.dashboard-page .datetime-card { gap:7px; padding:9px 10px; min-height:40px; }
+  body.counselor-page.dashboard-page .datetime-item { gap:5px; font-size:.67rem; white-space:nowrap; }
+  body.counselor-page.dashboard-page .datetime-icon { flex-basis:18px; width:18px; height:18px; }
+  body.counselor-page.dashboard-page .datetime-icon svg { width:17px; height:17px; }
+  body.counselor-page.dashboard-page .datetime-divider { height:17px; }
+  body.counselor-page.dashboard-page .metric-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:10px; margin-bottom:14px; }
+  body.counselor-page.dashboard-page .metric-card { min-height:128px; padding:15px; border-radius:16px; }
+  body.counselor-page.dashboard-page .metric-top { flex-direction:row; gap:5px; }
+  body.counselor-page.dashboard-page .metric-label { font-size:.72rem; }
+  body.counselor-page.dashboard-page .metric-symbol { flex:0 0 31px; width:31px; height:31px; border-radius:10px; }
+  body.counselor-page.dashboard-page .metric-symbol svg { width:17px; height:17px; }
+  body.counselor-page.dashboard-page .metric-value { margin:11px 0 4px; font-size:2.05rem; }
+  body.counselor-page.dashboard-page .metric-hint { font-size:.63rem; }
+  body.counselor-page.dashboard-page .dashboard-analysis-grid,
+  body.counselor-page.dashboard-page .dashboard-detail-grid { grid-template-columns:minmax(0,1fr); gap:13px; margin-bottom:13px; }
+  body.counselor-page.dashboard-page .system-panel,
+  body.counselor-page.dashboard-page .dashboard-analysis-grid .system-panel,
+  body.counselor-page.dashboard-page .dashboard-detail-grid .system-panel,
+  body.counselor-page.dashboard-page .quick-panel { padding:17px 15px; border-radius:18px; }
+  body.counselor-page.dashboard-page .system-panel h2 { font-size:1.12rem; }
+  body.counselor-page.dashboard-page .section-description { font-size:.74rem; }
+  body.counselor-page.dashboard-page .workflow-status-row { grid-template-columns:35px minmax(0,1fr) auto; min-height:62px; padding:10px; gap:9px; }
+  body.counselor-page.dashboard-page .workflow-status-row .workflow-status-icon { width:35px; height:35px; }
+  body.counselor-page.dashboard-page .workflow-status-row strong { font-size:.76rem; }
+  body.counselor-page.dashboard-page .workflow-status-row small { font-size:.66rem; }
+  body.counselor-page.dashboard-page .quick-panel .monitoring-grid { grid-template-columns:minmax(0,1fr); gap:9px; }
+  body.counselor-page.dashboard-page .quick-panel .monitoring-card { min-height:67px; padding:10px 12px; }
+
+  /* Recent Assessments: same card treatment as the Queue, without
+     modifying a single table value or existing assessment link. */
+  body.counselor-page.dashboard-page .recent-panel .events-table-wrap { width:100%; overflow:visible; border:0; background:transparent; }
+  body.counselor-page.dashboard-page .recent-panel .events-table,
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody,
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody tr,
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td { display:block; width:100%; min-width:0; height:auto; }
+  body.counselor-page.dashboard-page .recent-panel .events-table { min-width:0; table-layout:auto; background:transparent; }
+  body.counselor-page.dashboard-page .recent-panel .events-table thead { display:none; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody { display:grid; gap:12px; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody tr { padding:9px; border:1px solid #dfebe0; border-radius:17px; background:#fff; box-shadow:0 4px 13px rgba(26,69,41,.045); overflow:hidden; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td,
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(n) { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:40px; width:100%; padding:8px; border:0; border-bottom:1px solid #edf1eb; text-align:right; font-size:.78rem; white-space:normal; overflow-wrap:anywhere; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:not(:first-child)::before { flex:0 0 auto; font-size:.71rem; font-weight:650; color:#617966; text-align:left; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:first-child { display:block; min-height:0; padding:11px 12px; margin-bottom:4px; border:0; border-radius:12px; background:linear-gradient(105deg,#ecf7ed,#f5faf2); text-align:left; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:first-child::before { content:none; }
+  body.counselor-page.dashboard-page .recent-panel .dashboard-student { gap:10px; min-width:0; }
+  body.counselor-page.dashboard-page .recent-panel .dashboard-student-avatar { width:38px; height:38px; flex:0 0 38px; border-radius:50%; background:linear-gradient(135deg,#2e8654,#17653c); color:#fff; }
+  body.counselor-page.dashboard-page .recent-panel .dashboard-student-name { color:#133e29; font-size:.88rem; font-weight:800; line-height:1.45; }
+  body.counselor-page.dashboard-page .recent-panel .dashboard-student-id { font-size:.7rem; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(2)::before { content:'Assessment ID'; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(3)::before { content:'Submitted'; }
+  /* Keep the review date underneath the submission date in narrow cards. */
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(3) {
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-rows:auto auto;
+    column-gap:8px;
+    row-gap:2px;
+    text-align:right;
+  }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(3)::before {
+    grid-column:1; grid-row:1/3; align-self:center;
+  }
+  body.counselor-page.dashboard-page .recent-panel .assessment-reviewed-date {
+    display:block;
+    grid-column:2;
+    grid-row:2;
+    margin:0;
+    color:#79877c;
+    font-size:.67rem;
+    line-height:1.4;
+    text-align:right;
+    white-space:normal;
+  }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(4)::before { content:'Status'; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(5)::before { content:none; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td:nth-child(5) { display:block; padding:10px 1px 1px; border:0; }
+  body.counselor-page.dashboard-page .recent-panel .table-action { display:flex; align-items:center; justify-content:center; min-height:42px; width:100%; padding:9px 13px; border-radius:11px; background:#24764a; color:#fff; font-size:.81rem; font-weight:800; text-align:center; text-decoration:none; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td.empty-state { display:block; padding:20px 12px; text-align:center; }
+  body.counselor-page.dashboard-page .recent-panel .events-table tbody td.empty-state::before { content:none; }
+}
+
+@media (max-width: 360px) {
+  body.counselor-page.dashboard-page .main-content { padding:12px 10px 24px; }
+  body.counselor-page.dashboard-page .page-header.dashboard-hero { padding:18px 14px; }
+  body.counselor-page.dashboard-page .page-title { font-size:1.68rem; }
+  body.counselor-page.dashboard-page .datetime-item { font-size:.62rem; }
+  body.counselor-page.dashboard-page .datetime-divider { display:none; }
+  body.counselor-page.dashboard-page .metric-card { min-height:115px; padding:11px; }
+  body.counselor-page.dashboard-page .metric-label { font-size:.67rem; }
+  body.counselor-page.dashboard-page .metric-symbol { flex-basis:27px; width:27px; height:27px; }
+  body.counselor-page.dashboard-page .metric-value { font-size:1.85rem; }
+  body.counselor-page.dashboard-page .metric-hint { font-size:.59rem; }
+  body.counselor-page.dashboard-page .workflow-status-row { gap:7px; }
+}
+
+/* PTC Gmail theme: mobile color/surfaces only; existing card sizes,
+   responsive grids and Dashboard reveal animations are unchanged. */
+@media (max-width:900px) {
+  body.counselor-page.dashboard-page { background:#f7fbf7; }
+  body.counselor-page.dashboard-page .page-header.dashboard-hero {
+    border-color:#e1eee3;
+    background:linear-gradient(119deg,#fcfffc,#ebf7ed 68%,#d9efdf);
+  }
+  body.counselor-page.dashboard-page .metric-card {
+    border-color:#e2ebe3;
+    box-shadow:0 5px 18px rgba(19,64,36,.05);
+  }
+  body.counselor-page.dashboard-page .system-panel {
+    border-color:#e2ebe3;
+    box-shadow:0 5px 18px rgba(19,64,36,.045);
+  }
+}

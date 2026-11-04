@@ -1,0 +1,647 @@
+/* =========================================================
+   PTC-GCVEO — DISCLAIMER PAGE
+   Unified desktop + mobile design
+   Presentation only; assessment flow remains in disclaimer.php
+========================================================= */
+
+:root {
+    --disclaimer-green: #5E8B59;
+    --disclaimer-green-dark: #3F6940;
+    --disclaimer-green-deep: #29472D;
+    --disclaimer-green-pale: #F3F8EF;
+    --disclaimer-border: #DDE9D7;
+    --disclaimer-text: #344235;
+    --disclaimer-muted: #6E796D;
+    --disclaimer-white: #FFFFFF;
+    --disclaimer-shadow: 0 18px 48px rgba(43, 68, 39, .075),
+                         0 2px 8px rgba(43, 68, 39, .025);
+}
+
+html {
+    min-height: 100%;
+    scroll-behavior: smooth;
+}
+
+body.disclaimer-page {
+    min-height: 100vh;
+    margin: 0;
+    padding: clamp(22px, 4vw, 46px) 20px 52px;
+    overflow-x: hidden;
+    background:
+        radial-gradient(circle at 8% 5%, rgba(180, 211, 162, .24), transparent 31%),
+        radial-gradient(circle at 96% 92%, rgba(196, 220, 181, .23), transparent 33%),
+        #F7F9F4;
+    color: var(--disclaimer-text);
+    font-family: 'Poppins', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.disclaimer-page *,
+.disclaimer-page *::before,
+.disclaimer-page *::after {
+    box-sizing: border-box;
+}
+
+.disclaimer-page .disclaimer-wrapper {
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    animation: disclaimerEnter .45s ease both;
+}
+
+@keyframes disclaimerEnter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Progress */
+.disclaimer-page .progress-wrapper {
+    margin: 0 0 15px;
+    padding: 0 3px;
+}
+
+.disclaimer-page .progress-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 9px;
+}
+
+.disclaimer-page .progress-text,
+.disclaimer-page .progress-percentage {
+    color: #61735F;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .15px;
+}
+
+.disclaimer-page .progress-percentage {
+    color: var(--disclaimer-green-dark);
+    font-weight: 600;
+    text-align: right;
+}
+
+.disclaimer-page .progress-bar {
+    width: 100%;
+    height: 8px;
+    overflow: hidden;
+    background: #E3EBDD;
+    border-radius: 30px;
+}
+
+.disclaimer-page .progress-fill {
+    width: 16.6667%;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #78A96D, var(--disclaimer-green));
+    box-shadow: 0 1px 5px rgba(74, 119, 66, .18);
+}
+
+/* Main card */
+.disclaimer-page .disclaimer-card {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    padding: clamp(27px, 4.5vw, 46px);
+    overflow: hidden;
+    background: rgba(255, 255, 255, .98);
+    border: 1px solid rgba(221, 233, 215, .95);
+    border-radius: 24px;
+    box-shadow: var(--disclaimer-shadow);
+}
+
+/* Back navigation */
+.disclaimer-page .student-back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    margin: 0 0 17px;
+    padding: 0;
+    background: #FFFFFF;
+    border: 1px solid #DDE8D8;
+    border-radius: 50%;
+    color: #42663D;
+    text-decoration: none;
+    transition: background .2s ease, border-color .2s ease,
+                transform .2s ease, box-shadow .2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.disclaimer-page .student-back-btn span {
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 29px;
+    font-weight: 400;
+    line-height: 1;
+    transform: translate(-1px, -1px);
+}
+
+.disclaimer-page .student-back-btn:hover {
+    background: #F0F7EB;
+    border-color: #BFD5B7;
+    box-shadow: 0 3px 10px rgba(55, 90, 48, .10);
+    transform: translateX(-2px);
+}
+
+.disclaimer-page .student-back-btn:focus-visible,
+.disclaimer-page .continue-btn:focus-visible,
+.disclaimer-page .agree-box input:focus-visible {
+    outline: 3px solid rgba(94, 139, 89, .35);
+    outline-offset: 4px;
+}
+
+/* Header */
+.disclaimer-page .disclaimer-header h1 {
+    margin: 0 0 9px;
+    color: var(--disclaimer-green);
+    font-size: clamp(29px, 4vw, 38px);
+    font-weight: 700;
+    line-height: 1.22;
+    letter-spacing: -.8px;
+    overflow-wrap: anywhere;
+}
+
+.disclaimer-page .disclaimer-intro {
+    margin: 0 0 22px;
+    color: var(--disclaimer-green-deep);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* Information panel */
+.disclaimer-page .disclaimer-box {
+    margin: 0 0 27px;
+    padding: clamp(18px, 2.7vw, 24px);
+    background: #F7FAF4;
+    border: 1px solid #E3EDDD;
+    border-radius: 18px;
+}
+
+.disclaimer-page .disclaimer-box-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    color: var(--disclaimer-green-dark);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .65px;
+}
+
+.disclaimer-page .information-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 25px;
+    width: 25px;
+    height: 25px;
+    border-radius: 50%;
+    background: #E2EFD9;
+    color: var(--disclaimer-green-dark);
+    font-family: Georgia, serif;
+    font-size: 16px;
+    font-weight: 700;
+    font-style: italic;
+}
+
+.disclaimer-page .disclaimer-copy {
+    display: grid;
+    gap: 13px;
+}
+
+.disclaimer-page .disclaimer-copy p,
+.disclaimer-page .direction-copy {
+    margin: 0;
+    color: #4F5D4E;
+    font-size: 14px;
+    line-height: 1.8;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+/* Direction */
+.disclaimer-page .direction-section {
+    margin: 0 0 21px;
+}
+
+.disclaimer-page .section-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 10px;
+    color: var(--disclaimer-green-dark);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: .65px;
+}
+
+.disclaimer-page .section-heading::before {
+    content: "";
+    width: 4px;
+    height: 19px;
+    flex: 0 0 4px;
+    background: var(--disclaimer-green);
+    border-radius: 8px;
+}
+
+.disclaimer-page .direction-copy {
+    line-height: 1.8;
+}
+
+/* Scale */
+.disclaimer-page .scale-card {
+    margin: 0 0 22px;
+    padding: 19px 20px 20px;
+    background: var(--disclaimer-green-pale);
+    border: 1px solid #DDE9D6;
+    border-radius: 17px;
+}
+
+.disclaimer-page .scale-title {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin: 0 0 13px;
+    color: var(--disclaimer-green-dark);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.disclaimer-page .scale-icon {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 19px;
+    padding: 1px 0;
+}
+
+.disclaimer-page .scale-icon span {
+    display: block;
+    width: 5px;
+    border-radius: 3px;
+    background: #83B477;
+}
+
+.disclaimer-page .scale-icon span:nth-child(1) { height: 9px; }
+.disclaimer-page .scale-icon span:nth-child(2) { height: 14px; }
+.disclaimer-page .scale-icon span:nth-child(3) { height: 19px; }
+
+.disclaimer-page .scale-list {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.disclaimer-page .scale-item {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 43px;
+    padding: 4px 9px 4px 5px;
+    background: rgba(255, 255, 255, .88);
+    border: 1px solid rgba(225, 236, 219, .9);
+    border-radius: 11px;
+}
+
+.disclaimer-page .scale-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 38px;
+    width: 38px;
+    min-height: 33px;
+    border-radius: 9px;
+    background: #E7F1E1;
+    color: var(--disclaimer-green-dark);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.disclaimer-page .scale-item:first-child .scale-number,
+.disclaimer-page .scale-item:nth-child(2) .scale-number {
+    background: #D8EACF;
+}
+
+.disclaimer-page .scale-description {
+    min-width: 0;
+    color: #435442;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+/* Consent */
+.disclaimer-page .agree-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 13px;
+    width: 100%;
+    margin: 0 0 20px;
+    padding: 16px 18px;
+    background: #FBFCF9;
+    border: 1px solid #DDE9D7;
+    border-radius: 15px;
+    color: #4B5849;
+    font-size: 13px;
+    line-height: 1.7;
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.disclaimer-page .agree-box:hover {
+    background: #F6FAF2;
+    border-color: #BDD3B5;
+}
+
+.disclaimer-page .agree-box:has(input:checked) {
+    background: #F0F7EB;
+    border-color: #A8C99C;
+    box-shadow: 0 0 0 3px rgba(94, 139, 89, .06);
+}
+
+.disclaimer-page .agree-box input[type="checkbox"] {
+    flex: 0 0 21px;
+    width: 21px;
+    height: 21px;
+    margin: 2px 0 0;
+    accent-color: var(--disclaimer-green);
+    cursor: pointer;
+}
+
+.disclaimer-page .agree-box span {
+    flex: 1;
+    min-width: 0;
+}
+
+/* Continue */
+.disclaimer-page .continue-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 56px;
+    padding: 15px 22px;
+    background: var(--disclaimer-green);
+    border: 1px solid var(--disclaimer-green);
+    border-radius: 14px;
+    color: var(--disclaimer-white);
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: 0 7px 16px rgba(72, 111, 65, .12);
+    transition: background .2s ease, box-shadow .2s ease, transform .2s ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.disclaimer-page .continue-arrow {
+    font-size: 21px;
+    line-height: 1;
+    transition: transform .2s ease;
+}
+
+.disclaimer-page .continue-btn:hover:not(.disabled) {
+    background: #4B7546;
+    border-color: #4B7546;
+    color: #FFFFFF;
+    box-shadow: 0 10px 22px rgba(72, 111, 65, .18);
+    transform: translateY(-2px);
+}
+
+.disclaimer-page .continue-btn:hover:not(.disabled) .continue-arrow {
+    transform: translateX(3px);
+}
+
+.disclaimer-page .continue-btn.disabled {
+    background: #AEC5AA;
+    border-color: #AEC5AA;
+    color: #FFFFFF;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+    body.disclaimer-page {
+        padding: 24px 17px 36px;
+    }
+
+    .disclaimer-page .disclaimer-wrapper {
+        max-width: 680px;
+    }
+
+    .disclaimer-page .disclaimer-card {
+        padding: 30px 27px;
+    }
+
+    .disclaimer-page .disclaimer-copy p,
+    .disclaimer-page .direction-copy {
+        font-size: 13.5px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    body.disclaimer-page {
+        min-height: 100svh;
+        padding:
+            max(17px, env(safe-area-inset-top))
+            max(12px, env(safe-area-inset-right))
+            max(25px, env(safe-area-inset-bottom))
+            max(12px, env(safe-area-inset-left));
+    }
+
+    .disclaimer-page .disclaimer-wrapper {
+        max-width: 100%;
+    }
+
+    .disclaimer-page .progress-wrapper {
+        margin-bottom: 12px;
+        padding: 0 2px;
+    }
+
+    .disclaimer-page .progress-heading {
+        margin-bottom: 8px;
+    }
+
+    .disclaimer-page .progress-text,
+    .disclaimer-page .progress-percentage {
+        font-size: 12px;
+    }
+
+    .disclaimer-page .progress-bar {
+        height: 7px;
+    }
+
+    .disclaimer-page .disclaimer-card {
+        padding: 21px 17px 20px;
+        border-radius: 19px;
+    }
+
+    .disclaimer-page .student-back-btn {
+        width: 42px;
+        height: 42px;
+        margin-bottom: 14px;
+    }
+
+    .disclaimer-page .disclaimer-header h1 {
+        margin-bottom: 8px;
+        font-size: clamp(25px, 6.8vw, 31px);
+        line-height: 1.22;
+        letter-spacing: -.55px;
+    }
+
+    .disclaimer-page .disclaimer-intro {
+        margin-bottom: 17px;
+        font-size: 14px;
+    }
+
+    .disclaimer-page .disclaimer-box {
+        margin-bottom: 22px;
+        padding: 15px;
+        border-radius: 15px;
+    }
+
+    .disclaimer-page .disclaimer-box-label {
+        gap: 8px;
+        margin-bottom: 11px;
+        font-size: 11px;
+    }
+
+    .disclaimer-page .information-mark {
+        flex-basis: 23px;
+        width: 23px;
+        height: 23px;
+    }
+
+    .disclaimer-page .disclaimer-copy {
+        gap: 12px;
+    }
+
+    .disclaimer-page .disclaimer-copy p,
+    .disclaimer-page .direction-copy {
+        font-size: 12.5px;
+        line-height: 1.75;
+    }
+
+    .disclaimer-page .direction-section {
+        margin-bottom: 18px;
+    }
+
+    .disclaimer-page .section-heading {
+        margin-bottom: 8px;
+        font-size: 13px;
+    }
+
+    .disclaimer-page .scale-card {
+        margin-bottom: 18px;
+        padding: 15px 14px 16px;
+        border-radius: 15px;
+    }
+
+    .disclaimer-page .scale-title {
+        margin-bottom: 11px;
+        font-size: 14px;
+    }
+
+    .disclaimer-page .scale-list {
+        gap: 6px;
+    }
+
+    .disclaimer-page .scale-item {
+        min-height: 42px;
+        gap: 9px;
+        padding: 4px 7px 4px 4px;
+        border-radius: 10px;
+    }
+
+    .disclaimer-page .scale-number {
+        flex-basis: 35px;
+        width: 35px;
+        min-height: 32px;
+        font-size: 14px;
+    }
+
+    .disclaimer-page .scale-description {
+        font-size: 12.5px;
+    }
+
+    .disclaimer-page .agree-box {
+        gap: 11px;
+        margin-bottom: 16px;
+        padding: 14px;
+        border-radius: 13px;
+        font-size: 12.5px;
+        line-height: 1.65;
+    }
+
+    .disclaimer-page .agree-box input[type="checkbox"] {
+        flex-basis: 22px;
+        width: 22px;
+        height: 22px;
+        margin-top: 1px;
+    }
+
+    .disclaimer-page .continue-btn {
+        min-height: 54px;
+        padding: 14px 18px;
+        border-radius: 13px;
+        font-size: 15px;
+    }
+}
+
+/* Very narrow phones */
+@media (max-width: 360px) {
+    body.disclaimer-page {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .disclaimer-page .disclaimer-card {
+        padding: 19px 14px 18px;
+    }
+
+    .disclaimer-page .disclaimer-box {
+        padding: 13px;
+    }
+
+    .disclaimer-page .scale-card {
+        padding: 13px 11px 14px;
+    }
+
+    .disclaimer-page .scale-description {
+        font-size: 12px;
+    }
+
+    .disclaimer-page .agree-box {
+        padding: 12px;
+        font-size: 12px;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .disclaimer-page .disclaimer-wrapper {
+        animation: none !important;
+    }
+
+    .disclaimer-page *,
+    .disclaimer-page *::before,
+    .disclaimer-page *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}

@@ -148,79 +148,36 @@ $specialization = $has_specialization ? ($profile['specialization'] ?? '') : '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - Counselor Dashboard</title>
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    
+    <title>Profile Settings | PTC Wellness</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-base.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/counselor-layout.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/profile.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/profile.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/profile-mobile.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/profile-mobile.css') ?>" media="(max-width: 900px)">
 </head>
-<body class="counselor-page">
-    <div class="app-shell">
-      <aside class="sidebar">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32">
-                    <path d="M16 27V15"></path>
-                    <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                    <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-                </svg>
-            </span>
-            <span class="brand-copy">
-                <strong class="brand-name">PTC Wellness</strong>
-                <small class="brand-tagline">Mental Health &amp; Well-being</small>
-            </span>
-        </a>
-
-        <nav class="nav" aria-label="Counselor navigation">
-            <a class="nav-link" href="dashboard.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg></span>
-                Dashboard
-            </a>
-            <a class="nav-link" href="assessment_queue.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"></path><path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"></path></svg></span>
-                Assessments Queue
-            </a>
-            <a class="nav-link" href="monitoring.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 12s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg></span>
-                Monitoring
-            </a>
-            <a class="nav-link" href="referral.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"></path><path d="M5 5v14h14"></path></svg></span>
-                Referral
-            </a>
-            <a class="nav-link" href="assessment_history.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></span>
-                Assessment History
-            </a>
-            <a class="nav-link active" href="profile.php" aria-current="page">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg></span>
-                Profile
-            </a>
-            <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-                <span class="nav-icon"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3"></path><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path></svg></span>
-                Logout
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <strong>Well-being matters.</strong>
-            <span>Supporting a healthier campus, one step at a time.</span>
+<body class="counselor-page profile-page">
+<?php include __DIR__ . '/../includes/counselor/sidebar.php'; ?>
+<div class="counselor-workspace">
+<?php include __DIR__ . '/../includes/counselor/topbar.php'; ?>
+<main class="main-content profile-content">
+    <header class="page-header profile-header">
+        <div class="page-heading">
+            <p class="eyebrow profile-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
+            <h1 class="page-title">Profile Settings</h1>
+            <p class="page-subtitle">Manage your counselor account information and keep your account secure.</p>
         </div>
-      </aside>
-
-        <main class="main-content">
-            <header class="page-header">
-                <div class="page-heading">
-                    <p class="eyebrow">PTC Wellness · Guidance Office</p>
-                    <h1 class="page-title">Profile Settings</h1>
-                    <p class="page-subtitle">Manage your counselor account information and keep your account secure.</p>
-                </div>
-                <<span class="portal-badge">
-                <span class="portal-dot"></span>
-                     Counselor Portal
-                </span>
-            </header>
-
+        <div class="header-right">
+            <div class="datetime-card" aria-label="Current date and time in Manila">
+                <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span id="profile-current-date">Loading date...</span></span>
+                <span class="datetime-divider" aria-hidden="true"></span>
+                <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span id="profile-current-time">Loading time...</span></span>
+            </div>
+        </div>
+    </header>
             <div class="profile-grid">
-                <section class="panel">
+                <section class="panel profile-panel">
                     <h2 class="panel-title">Profile Information</h2>
                     <div class="info-box">
                         <div class="avatar"><?php echo strtoupper(substr($fullname ?: 'C', 0, 1)); ?></div>
@@ -260,13 +217,13 @@ $specialization = $has_specialization ? ($profile['specialization'] ?? '') : '';
                                 </div>
                             <?php endif; ?>
                         </div>
-                        <div style="margin-top: 18px;">
+                        <div class="profile-form-actions">
                             <button type="submit" class="btn">Update Profile</button>
                         </div>
                     </form>
                 </section>
 
-                <section class="panel">
+                <section class="panel profile-panel">
                     <h2 class="panel-title">Change Password</h2>
                     <p class="security-hint">Use a strong password that you do not use for other accounts.</p>
                     <form method="POST">
@@ -285,18 +242,15 @@ $specialization = $has_specialization ? ($profile['specialization'] ?? '') : '';
                                 <input id="confirm_password" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required>
                             </div>
                         </div>
-                        <div style="margin-top: 18px;">
+                        <div class="profile-form-actions">
                             <button type="submit" class="btn">Change Password</button>
                         </div>
                     </form>
                 </section>
             </div>
-            <footer class="page-footer">
-                <span>PTC Wellness · Counselor Portal</span>
-                <span>Confidential account information — keep your password private.</span>
-            </footer>
-        </main>
-    </div>
+</main>
+<?php include __DIR__ . '/../includes/counselor/footer.php'; ?>
+</div>
 
     <?php if ($message !== '' || $error !== ''): ?>
     <?php $modalSuccess = ($message !== ''); ?>
@@ -347,216 +301,18 @@ $specialization = $has_specialization ? ($profile['specialization'] ?? '') : '';
         }, 80);
     })();
     </script>
-<!-- Logout Confirmation Modal -->
-<style>
-    .logout-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, .58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
-
-    .logout-overlay.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-overlay.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-icon svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-</style>
-
-<div class="logout-overlay" id="logout-modal" aria-hidden="true">
-    <section class="logout-dialog"
-             role="dialog"
-             aria-modal="true"
-             aria-labelledby="logout-title"
-             aria-describedby="logout-description">
-
-        <div class="logout-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"
-                 fill="none"
-                 stroke="currentColor"
-                 stroke-width="1.8"
-                 stroke-linecap="round"
-                 stroke-linejoin="round">
-                <path d="M10 17l5-5-5-5"></path>
-                <path d="M15 12H3"></path>
-                <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-            </svg>
-        </div>
-
-        <h2 id="logout-title">Are you sure you want to log out?</h2>
-
-        <p id="logout-description">
-            You may lose any unsaved changes. Please make sure
-            you've saved your work before leaving.
-        </p>
-
-        <div class="logout-actions">
-            <button type="button" class="logout-confirm" id="confirm-logout">
-                Yes, Log Out
-            </button>
-
-            <button type="button" class="logout-cancel" id="cancel-logout">
-                Go Back
-            </button>
-        </div>
-    </section>
-</div>
 
 <script>
 (function () {
-    const modal = document.getElementById('logout-modal');
-    const cancelButton = document.getElementById('cancel-logout');
-    const confirmButton = document.getElementById('confirm-logout');
-
-    if (!modal || !cancelButton || !confirmButton) return;
-
-    const logoutLinks = document.querySelectorAll(
-        'a[href*="logout.php"]'
-    );
-
-    let previousFocus = null;
-
-    function openModal(event) {
-        event.preventDefault();
-        previousFocus = document.activeElement;
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-        cancelButton.focus();
-    }
-
-    function closeModal() {
-        modal.classList.remove('is-open');
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-
-        if (previousFocus) previousFocus.focus();
-    }
-
-    logoutLinks.forEach(function (link) {
-        link.addEventListener('click', openModal);
-    });
-
-    cancelButton.addEventListener('click', closeModal);
-
-    confirmButton.addEventListener('click', function () {
-        window.location.href = '../auth/logout.php?portal=counselor';
-    });
-
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) closeModal();
-    });
-
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
-            closeModal();
-        }
-    });
+    const dateEl = document.getElementById('profile-current-date');
+    const timeEl = document.getElementById('profile-current-time');
+    if (!dateEl || !timeEl) return;
+    const dateFmt = new Intl.DateTimeFormat('en-PH', {timeZone:'Asia/Manila', weekday:'long', month:'short', day:'numeric', year:'numeric'});
+    const timeFmt = new Intl.DateTimeFormat('en-PH', {timeZone:'Asia/Manila', hour:'2-digit', minute:'2-digit', hour12:true});
+    function update() { const now = new Date(); dateEl.textContent = dateFmt.format(now); timeEl.textContent = timeFmt.format(now); }
+    update(); window.setInterval(update, 1000);
 })();
 </script>
+<script src="../assets/js/counselor/counselor-layout.js?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/counselor/counselor-layout.js') ?>" defer></script>
 </body>
 </html>

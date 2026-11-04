@@ -93,6 +93,63 @@ if ($schedule_table && ref_column_exists($conn, $schedule_table, 'meeting_date')
 }
 
 $counselor_id = (int)($_SESSION['user_id'] ?? 0);
+$requested_assessment_id = filter_input(
+    INPUT_GET,
+    'assessment_id',
+    FILTER_VALIDATE_INT
+) ?: 0;
+
+/* Resolve a reviewed assessment passed directly from the assessment review page. */
+$requested_assessment_name = '';
+$requested_assessment_valid = false;
+
+if ($requested_assessment_id > 0 && $assessment_table) {
+    $requested_id_col = ref_first_column(
+        $conn,
+        $assessment_table,
+        ['assessment_id', 'id', 'submission_id', 'record_id']
+    );
+    $requested_user_col = ref_first_column(
+        $conn,
+        $assessment_table,
+        ['student_id']
+    );
+    $requested_status_col = ref_first_column(
+        $conn,
+        $assessment_table,
+        ['status', 'review_status', 'assessment_status', 'submission_status']
+    );
+
+    if ($requested_id_col && $requested_status_col) {
+        $student_join = $requested_user_col
+            ? "LEFT JOIN student_profiles u ON u.student_id = a.`$requested_user_col`"
+            : "LEFT JOIN student_profiles u ON 1 = 0";
+
+        $requested_sql = "SELECT a.`$requested_id_col` AS assessment_id,
+                                 COALESCE(u.fullname, 'Student') AS fullname
+                          FROM `$assessment_table` a
+                          $student_join
+                          WHERE a.`$requested_id_col` = ?
+                            AND LOWER(TRIM(COALESCE(a.`$requested_status_col`, ''))) = 'reviewed'
+                          LIMIT 1";
+        $requested_stmt = mysqli_prepare($conn, $requested_sql);
+
+        if ($requested_stmt) {
+            mysqli_stmt_bind_param($requested_stmt, 'i', $requested_assessment_id);
+            mysqli_stmt_execute($requested_stmt);
+            $requested_result = mysqli_stmt_get_result($requested_stmt);
+            $requested_row = $requested_result
+                ? mysqli_fetch_assoc($requested_result)
+                : null;
+            mysqli_stmt_close($requested_stmt);
+
+            if ($requested_row) {
+                $requested_assessment_valid = true;
+                $requested_assessment_name = $requested_row['fullname'] ?? 'Student';
+            }
+        }
+    }
+}
 
 /* Active counselors available for authorized case assignment during scheduling. */
 $active_counselors = [];
@@ -172,12 +229,15 @@ if (
         FILTER_VALIDATE_INT
     ) ?: 0;
 
+    $reason = trim($_POST['referral_reason'] ?? '');
     $notes = trim($_POST['counselor_notes'] ?? '');
 
     if (!$assessment_table || !$referral_table) {
         $error = "The assessment or referral table is unavailable.";
     } elseif ($assessment_id < 1 || $counselor_id < 1) {
         $error = "Please select a valid assessment.";
+    } elseif ($reason === '' || strlen($reason) > 2000) {
+        $error = "Please provide a valid referral reason (maximum 2,000 characters).";
     } elseif (strlen($notes) > 10000) {
         $error = "Referral notes are too long.";
     } else {
@@ -264,6 +324,8 @@ if (
                         'counselor_id',
                         'referral_status',
                         'referral_date',
+                        'referral_reason',
+                        'counselor_notes',
                         'remarks'
                     ];
 
@@ -271,6 +333,8 @@ if (
                         'counselor_id',
                         'referral_status',
                         'referral_date',
+                        'referral_reason',
+                        'counselor_notes',
                         'remarks'
                     ];
 
@@ -290,8 +354,8 @@ if (
 
                         $insert_sql = "INSERT INTO `$referral_table`
                             ($assessment_column_sql, `counselor_id`,
-                            `referral_status`, `referral_date`, `remarks`)
-                            VALUES (?, ?, 'Pending', NOW(), ?)";
+                            `referral_status`, `referral_date`, `referral_reason`, `counselor_notes`, `remarks`)
+                            VALUES (?, ?, 'Pending', NOW(), ?, ?, '')";
 
                         $stmt = mysqli_prepare($conn, $insert_sql);
 
@@ -301,9 +365,10 @@ if (
                         } else {
                             mysqli_stmt_bind_param(
                                 $stmt,
-                                'iis',
+                                'iiss',
                                 $assessment_id,
                                 $counselor_id,
+                                $reason,
                                 $notes
                             );
 
@@ -349,6 +414,25 @@ if (
             }
         }
     }
+}
+
+/* Return JSON for every failed AJAX Create Referral attempt.
+   Otherwise PHP falls through to the HTML page and response.json() fails. */
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    ($_POST['action'] ?? '') === 'create_referral' &&
+    !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+    strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest' &&
+    $error !== ''
+) {
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code(422);
+    echo json_encode([
+        'success' => false,
+        'action' => 'create_referral',
+        'message' => $error
+    ]);
+    exit;
 }
 
 /* SCHEDULE OR RESCHEDULE APPOINTMENT */
@@ -636,9 +720,53 @@ if (
     }
 }
 
+/* UPDATE REFERRAL DETAILS — reason and counselor notes remain separate. */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'update_referral_details') {
+    $referral_id = filter_input(INPUT_POST, 'referral_id', FILTER_VALIDATE_INT) ?: 0;
+    $reason = trim((string)($_POST['referral_reason'] ?? ''));
+    $notes = trim((string)($_POST['counselor_notes'] ?? ''));
+
+    if (!$referral_table || $referral_id < 1) {
+        $error = 'Invalid referral record.';
+    } elseif ($reason === '' || strlen($reason) > 2000) {
+        $error = 'Referral reason is required and must not exceed 2,000 characters.';
+    } elseif (strlen($notes) > 10000) {
+        $error = 'Counselor notes must not exceed 10,000 characters.';
+    } elseif (!ref_column_exists($conn, $referral_table, 'referral_reason')) {
+        $error = 'The referral_reason database column is missing. Please run the supplied SQL migration first.';
+    } else {
+        $stmt = mysqli_prepare($conn,
+            "UPDATE `$referral_table` SET referral_reason = ?, counselor_notes = ? WHERE referral_id = ? AND counselor_id = ? LIMIT 1"
+        );
+        if (!$stmt) {
+            $error = 'Unable to prepare referral details update.';
+        } else {
+            mysqli_stmt_bind_param($stmt, 'ssii', $reason, $notes, $referral_id, $counselor_id);
+            if (mysqli_stmt_execute($stmt) && mysqli_stmt_affected_rows($stmt) >= 0) {
+                mysqli_stmt_close($stmt);
+                if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['success' => true, 'action' => 'update_referral_details', 'message' => 'Referral details updated successfully!']);
+                    exit;
+                }
+                $_SESSION['success_message'] = 'Referral details updated successfully!';
+                ref_redirect($month_start->format('Y-m'));
+            } else {
+                $error = 'Unable to update referral details.';
+                mysqli_stmt_close($stmt);
+            }
+        }
+    }
+    if ($error !== '' && !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+        header('Content-Type: application/json; charset=utf-8');
+        http_response_code(422);
+        echo json_encode(['success' => false, 'message' => $error]);
+        exit;
+    }
+}
+
 /* LOAD REFERRALS AND ASSESSMENTS */
 $referrals = [];
-$ready_assessments = [];
 $schedules_by_referral = [];
 $calendar_events = [];
 $calendar_error = '';
@@ -649,8 +777,10 @@ if ($assessment_table && $referral_table) {
                 r.assessment_id,
                 r.referral_status,
                 r.referral_date,
+                r.referral_reason,
+                r.counselor_notes,
                 r.remarks,
-                a.user_id,
+                a.student_id,
                 a.assessment_type,
                 a.assessment_date,
                 a.status AS assessment_status,
@@ -659,8 +789,8 @@ if ($assessment_table && $referral_table) {
             FROM `$referral_table` r
             LEFT JOIN `$assessment_table` a
               ON a.assessment_id = r.assessment_id
-            LEFT JOIN user_data u
-              ON u.user_id = a.user_id
+            LEFT JOIN student_profiles u
+              ON u.student_id = a.student_id
             WHERE r.counselor_id = ?
             ORDER BY r.referral_date DESC";
 
@@ -679,101 +809,7 @@ if ($assessment_table && $referral_table) {
     }
 }
 
-/* Load reviewed assessments that do not have a referral yet. */
-$id_column = null;
-$user_column = null;
-$date_column = null;
-$status_column = null;
-
-if ($assessment_table && $referral_table) {
-    foreach (['assessment_id', 'id', 'submission_id', 'record_id'] as $column) {
-        if (ref_table_exists($conn, $assessment_table)) {
-            $check = mysqli_query(
-                $conn,
-                "SHOW COLUMNS FROM `$assessment_table` LIKE '" .
-                mysqli_real_escape_string($conn, $column) . "'"
-            );
-
-            if ($check && mysqli_num_rows($check) > 0) {
-                $id_column = $column;
-                break;
-            }
-        }
-    }
-
-    foreach (['user_id', 'student_id'] as $column) {
-        $check = mysqli_query(
-            $conn,
-            "SHOW COLUMNS FROM `$assessment_table` LIKE '" .
-            mysqli_real_escape_string($conn, $column) . "'"
-        );
-
-        if ($check && mysqli_num_rows($check) > 0) {
-            $user_column = $column;
-            break;
-        }
-    }
-
-    foreach (['assessment_date', 'submitted_at', 'created_at', 'date_submitted'] as $column) {
-        $check = mysqli_query(
-            $conn,
-            "SHOW COLUMNS FROM `$assessment_table` LIKE '" .
-            mysqli_real_escape_string($conn, $column) . "'"
-        );
-
-        if ($check && mysqli_num_rows($check) > 0) {
-            $date_column = $column;
-            break;
-        }
-    }
-
-    foreach (['status', 'review_status', 'submission_status'] as $column) {
-        $check = mysqli_query(
-            $conn,
-            "SHOW COLUMNS FROM `$assessment_table` LIKE '" .
-            mysqli_real_escape_string($conn, $column) . "'"
-        );
-
-        if ($check && mysqli_num_rows($check) > 0) {
-            $status_column = $column;
-            break;
-        }
-    }
-
-    if ($id_column && $user_column && $status_column) {
-        $date_select = $date_column
-            ? "a.`$date_column`"
-            : "NULL";
-
-        $sql = "SELECT
-                    a.`$id_column` AS assessment_id,
-                    a.`$user_column` AS user_id,
-                    $date_select AS assessment_date,
-                    a.`$status_column` AS status,
-                    u.fullname,
-                    u.email
-                FROM `$assessment_table` a
-                LEFT JOIN user_data u
-                    ON u.user_id = a.`$user_column`
-                LEFT JOIN `$referral_table` r
-                    ON r.assessment_id = a.`$id_column`
-                WHERE LOWER(TRIM(COALESCE(a.`$status_column`, ''))) = 'reviewed'
-                  AND r.assessment_id IS NULL
-                ORDER BY " .
-                ($date_column
-                    ? "a.`$date_column` DESC"
-                    : "a.`$id_column` DESC");
-
-        $result = mysqli_query($conn, $sql);
-
-        if ($result) {
-            while ($row = mysqli_fetch_assoc($result)) {
-                $ready_assessments[] = $row;
-            }
-        }
-    }
-}
-
+/* Appointment records and calendar events are loaded below. */
 if ($schedule_table && $referral_table) {
     $sql = "SELECT s.schedule_id, s.referral_id,
                    s.meeting_date, s.meeting_time,
@@ -815,8 +851,8 @@ if ($schedule_table && $referral_table) {
               ON r.referral_id = s.referral_id
             JOIN `$assessment_table` a
               ON a.assessment_id = r.assessment_id
-            LEFT JOIN user_data u
-              ON u.user_id = a.user_id
+            LEFT JOIN student_profiles u
+              ON u.student_id = a.student_id
             WHERE r.counselor_id = ?
               AND s.meeting_date >= ?
               AND s.meeting_date < ?
@@ -867,104 +903,30 @@ $scheduled_count = count($schedules_by_referral);
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    <link rel="stylesheet" href="../assets/css/referral.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-base.css">
+    <link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/counselor-layout.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/referral.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/referral.css') ?>">
+    <link rel="stylesheet" href="../assets/css/counselor/referral-mobile.css?v=<?= (int) @filemtime(__DIR__ . '/../assets/css/counselor/referral-mobile.css') ?>" media="(max-width: 900px)">
 </head>
-<body class="counselor-page">
-<div class="app-shell">
-
-    <aside class="sidebar">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32">
-                    <path d="M16 27V15"></path>
-                    <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                    <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-                </svg>
-            </span>
-            <span class="brand-copy">
-                <strong class="brand-name">PTC Wellness</strong>
-                <small class="brand-tagline">Mental Health &amp; Well-being</small>
-            </span>
-        </a>
-
-        <nav class="nav" aria-label="Counselor navigation">
-            <a class="nav-link" href="dashboard.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                    <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                    <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                    <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                </svg></span>
-                Dashboard
-            </a>
-
-            <a class="nav-link" href="assessment_queue.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <path d="M8 6h13M8 12h13M8 18h13"></path>
-                    <path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"></path>
-                </svg></span>
-                Assessments Queue
-            </a>
-
-            <a class="nav-link" href="monitoring.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <path d="M3 12s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7Z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                </svg></span>
-                Monitoring
-            </a>
-
-            <a class="nav-link active" href="referral.php" aria-current="page">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <path d="M7 17 17 7M7 7h10v10"></path>
-                    <path d="M5 5v14h14"></path>
-                </svg></span>
-                Referral
-            </a>
-
-            <a class="nav-link" href="assessment_history.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <path d="M12 7v5l3 2"></path>
-                </svg></span>
-                Assessment History
-            </a>
-
-            <a class="nav-link" href="profile.php">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="8" r="4"></circle>
-                    <path d="M4 21a8 8 0 0 1 16 0"></path>
-                </svg></span>
-                Profile
-            </a>
-
-            <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-                <span class="nav-icon"><svg viewBox="0 0 24 24">
-                    <path d="M10 17l5-5-5-5M15 12H3"></path>
-                    <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-                </svg></span>
-                Logout
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <strong>Well-being matters.</strong>
-            <span>Supporting a healthier campus, one step at a time.</span>
-        </div>
-    </aside>
-
-    <main class="main-content referral-content">
+<body class="counselor-page referral-page">
+<?php include __DIR__ . '/../includes/counselor/sidebar.php'; ?>
+<div class="counselor-workspace">
+<?php include __DIR__ . '/../includes/counselor/topbar.php'; ?>
+<main class="main-content referral-content">
 
         <header class="page-header referral-header">
-            <div>
-                <p class="referral-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
-                <h1>Referral Management</h1>
-                <p class="referral-subtitle">
-                    Create referrals, schedule appointments, and assign case responsibility.
-                </p>
+            <div class="page-heading">
+                <p class="eyebrow referral-eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
+                <h1 class="page-title">Referral Management</h1>
+                <p class="page-subtitle referral-subtitle">Create referrals, schedule appointments, and assign case responsibility.</p>
             </div>
-            <span class="referral-portal-tag">Counselor Portal</span>
+            <div class="header-right">
+                <div class="datetime-card" aria-label="Current date and time in Manila">
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span id="referral-current-date">Loading date...</span></span>
+                    <span class="datetime-divider" aria-hidden="true"></span>
+                    <span class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span id="referral-current-time">Loading time...</span></span>
+                </div>
+            </div>
         </header>
 
         <?php if ($message !== ''): ?>
@@ -1080,11 +1042,6 @@ $scheduled_count = count($schedules_by_referral);
                 <small>Awaiting the next action</small>
             </article>
             <article class="referral-stat">
-                <span>Needs Assessments Ready</span>
-                <strong><?= count($ready_assessments) ?></strong>
-                <small>Reviewed, without an existing referral</small>
-            </article>
-            <article class="referral-stat">
                 <span>Appointments on Record</span>
                 <strong><?= (int)$scheduled_count ?></strong>
                 <small>Referral appointments recorded</small>
@@ -1150,6 +1107,7 @@ $scheduled_count = count($schedules_by_referral);
 
                             <?php foreach ($calendar_events[$date_key] ?? [] as $event): ?>
                                 <a class="calendar-event"
+                                   aria-label="View appointment details for <?= ref_escape($event['fullname'] ?? 'Student') ?>"
                                    href="#referral-<?= (int)$event['referral_id'] ?>"
                                    data-calendar-event
                                    data-referral-id="<?= (int)$event['referral_id'] ?>"
@@ -1173,6 +1131,7 @@ $scheduled_count = count($schedules_by_referral);
                         </div>
                     <?php endforeach; ?>
                 </div>
+                <p class="calendar-mobile-hint">Tap a green appointment dot to view its details.</p>
 
                 <?php if (empty($calendar_events)): ?>
                     <p class="calendar-empty">
@@ -1180,73 +1139,6 @@ $scheduled_count = count($schedules_by_referral);
                     </p>
                 <?php endif; ?>
             <?php endif; ?>
-        </section>
-
-        <section class="referral-panel" id="ready-assessments">
-            <div class="referral-panel-heading">
-                <div>
-                    <h2>Needs Assessments Ready for Referral</h2>
-                    <p class="referral-section-description">
-                        Reviewed Needs Assessments without an existing referral.
-                    </p>
-                </div>
-                <span class="record-count"><?= count($ready_assessments) ?> records</span>
-            </div>
-
-            <div class="referral-table-wrap">
-                <table class="referral-table">
-                    <thead>
-                    <tr>
-                        <th>Student</th>
-                        <th>Assessment</th>
-                        <th>Review Status</th>
-                        <th>Submitted</th>
-                        <th>Action</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php if (empty($ready_assessments)): ?>
-                        <tr>
-                            <td colspan="5" class="referral-empty-cell">
-                                <strong>No assessments ready for referral</strong>
-                                <span>Reviewed Needs Assessments will appear here.</span>
-                            </td>
-                        </tr>
-                    <?php else: ?>
-                        <?php foreach ($ready_assessments as $assessment): ?>
-                            <tr>
-                                <td>
-                                    <strong class="student-name">
-                                        <?= ref_escape($assessment['fullname'] ?? 'Student') ?>
-                                    </strong>
-                                    <small class="student-detail">
-                                        <?= ref_escape($assessment['email'] ?? '') ?>
-                                    </small>
-                                </td>
-                                <td>
-                                    <strong>#<?= (int)$assessment['assessment_id'] ?></strong>
-                                    <small class="student-detail">Needs Assessment</small>
-                                </td>
-                                <td><span class="status-badge accepted">Reviewed</span></td>
-                                <td>
-                                    <?= !empty($assessment['assessment_date'])
-                                        ? ref_escape(date('M d, Y', strtotime($assessment['assessment_date'])))
-                                        : '—' ?>
-                                </td>
-                                <td>
-                                    <button type="button"
-                                        class="referral-button primary open-referral-modal"
-                                        data-assessment-id="<?= (int)$assessment['assessment_id'] ?>"
-                                        data-student="<?= ref_escape($assessment['fullname'] ?? 'Student') ?>">
-                                        Create Referral
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </section>
 
         <section class="referral-panel" id="referrals-list">
@@ -1289,8 +1181,8 @@ $scheduled_count = count($schedules_by_referral);
                                 $status_class = strtolower($status);
                                 $status_class = preg_replace('/[^a-z-]/', '', $status_class);
                             ?>
-                            <tr id="referral-<?= $rid ?>">
-                                <td>
+                            <tr id="referral-<?= $rid ?>" data-assessment-id="<?= (int)$referral['assessment_id'] ?>" data-referral-id="<?= $rid ?>">
+                                <td data-label="Student">
                                     <strong class="student-name">
                                         <?= ref_escape($referral['fullname'] ?? 'Student') ?>
                                     </strong>
@@ -1298,38 +1190,45 @@ $scheduled_count = count($schedules_by_referral);
                                         <?= ref_escape($referral['email'] ?? '') ?>
                                     </small>
                                 </td>
-                                <td>
+                                <td data-label="Assessment">
                                     <strong>#<?= (int)$referral['assessment_id'] ?></strong>
                                     <small class="student-detail">Needs Assessment</small>
                                 </td>
-                                <td>
+                                <td data-label="Status">
                                     <span class="status-badge <?= ref_escape($status_class) ?>">
                                         <?= ref_escape($status) ?>
                                     </span>
                                 </td>
-                                <td>
+                                <td data-label="Created">
                                     <?= !empty($referral['referral_date'])
                                         ? ref_escape(date('M d, Y', strtotime($referral['referral_date'])))
                                         : '—' ?>
                                 </td>
-                                <td>
+                                <td data-label="Appointment" id="appointment-state-<?= $rid ?>">
                                     <?php if ($appointment): ?>
-                                        <strong>
-                                            <?= ref_escape(date('M d, Y', strtotime($appointment['meeting_date']))) ?>
-                                        </strong>
-                                        <small class="student-detail">
-                                            <?= ref_escape(date('g:i A', strtotime($appointment['meeting_time']))) ?>
-                                            · <?= ref_escape($appointment['location']) ?>
-                                        </small>
-                                        <small class="student-detail">
-                                            Appointment: <?= ref_escape($appointment['status']) ?>
-                                        </small>
+                                        <strong><?= ref_escape(date('M d, Y', strtotime($appointment['meeting_date']))) ?></strong>
+                                        <small class="student-detail"><?= ref_escape(date('g:i A', strtotime($appointment['meeting_time']))) ?> · <?= ref_escape($appointment['location']) ?></small>
+                                        <small class="student-detail">Appointment: <?= ref_escape($appointment['status']) ?></small>
                                     <?php else: ?>
                                         <span class="student-detail">Not scheduled</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
+                                <td data-label="Actions">
                                     <div class="referral-actions">
+                                        <button type="button"
+                                            class="referral-button secondary open-details-modal"
+                                            data-referral-id="<?= $rid ?>"
+                                            data-student="<?= ref_escape($referral['fullname'] ?? 'Student') ?>"
+                                            data-reason="<?= ref_escape($referral['referral_reason'] ?? '') ?>"
+                                            data-notes="<?= ref_escape($referral['counselor_notes'] ?? '') ?>"
+                                            data-created="<?= ref_escape($referral['referral_date'] ?? '') ?>"
+                                            data-status="<?= ref_escape($status) ?>"
+                                            data-appointment="<?= ref_escape($appointment ? (($appointment['meeting_date'] ?? '') . ' ' . ($appointment['meeting_time'] ?? '') . ' · ' . ($appointment['location'] ?? '') . ' · ' . ($appointment['status'] ?? '')) : 'Not scheduled') ?>">View</button>
+                                        <button type="button"
+                                            class="referral-button secondary open-edit-details-modal"
+                                            data-referral-id="<?= $rid ?>"
+                                            data-reason="<?= ref_escape($referral['referral_reason'] ?? '') ?>"
+                                            data-notes="<?= ref_escape($referral['counselor_notes'] ?? '') ?>">Edit</button>
                                         <?php if ($schedule_table): ?>
                                             <button type="button"
                                                 class="referral-button secondary open-schedule-modal"
@@ -1364,11 +1263,8 @@ $scheduled_count = count($schedules_by_referral);
             <?php endif; ?>
         </section>
 
-        <footer class="referral-footer">
-            <span>PTC Wellness · Counselor Portal</span>
-            <span>Confidential student information — handle with care.</span>
-        </footer>
-    </main>
+        </main>
+<?php include __DIR__ . '/../includes/counselor/footer.php'; ?>
 </div>
 
 <!-- Appointment Details Modal -->
@@ -1419,10 +1315,17 @@ $scheduled_count = count($schedules_by_referral);
             </div>
 
             <div class="referral-field">
+                <label for="createReferralReason">Referral Reason <span aria-hidden="true">*</span></label>
+                <textarea name="referral_reason" id="createReferralReason"
+                    maxlength="2000" required
+                    placeholder="Explain why this student is being referred..."></textarea>
+            </div>
+
+            <div class="referral-field">
                 <label for="counselorNotes">Counselor Notes</label>
                 <textarea name="counselor_notes" id="counselorNotes"
                     maxlength="10000"
-                    placeholder="Add relevant referral notes..."></textarea>
+                    placeholder="Add additional notes relevant to this referral..."></textarea>
             </div>
 
             <div class="referral-modal-actions">
@@ -1433,6 +1336,38 @@ $scheduled_count = count($schedules_by_referral);
                     Create Referral
                 </button>
             </div>
+        </form>
+    </div>
+</div>
+
+<!-- Referral Details Modal -->
+<div class="referral-modal" id="referralDetailsModal" aria-hidden="true">
+    <div class="referral-modal-card" role="dialog" aria-modal="true" aria-labelledby="referralDetailsTitle">
+        <div class="referral-modal-heading"><div><p class="referral-eyebrow">REFERRAL RECORD</p><h2 id="referralDetailsTitle">Referral Details</h2><p id="detailsStudentName" class="referral-modal-subtitle">Student</p></div>
+            <button type="button" class="referral-modal-close" data-close-modal aria-label="Close">×</button></div>
+        <div class="referral-detail-list">
+            <div class="referral-detail-item"><span>Referral ID</span><strong id="detailsReferralId">—</strong></div>
+            <div class="referral-detail-item"><span>Referral Date</span><strong id="detailsReferralDate">—</strong></div>
+            <div class="referral-detail-item"><span>Referral Status</span><strong id="detailsReferralStatus">—</strong></div>
+            <div class="referral-detail-item"><span>Appointment</span><strong id="detailsAppointment">—</strong></div>
+            <div class="referral-detail-item full"><span>Referral Reason</span><p id="detailsReferralReason">—</p></div>
+            <div class="referral-detail-item full"><span>Counselor Notes</span><p id="detailsCounselorNotes">—</p></div>
+        </div>
+        <div class="referral-modal-actions"><button type="button" class="referral-button secondary" data-close-modal>Close</button></div>
+    </div>
+</div>
+
+<!-- Edit Referral Details Modal -->
+<div class="referral-modal" id="editReferralDetailsModal" aria-hidden="true">
+    <div class="referral-modal-card" role="dialog" aria-modal="true" aria-labelledby="editReferralDetailsTitle">
+        <div class="referral-modal-heading"><div><p class="referral-eyebrow">UPDATE RECORD</p><h2 id="editReferralDetailsTitle">Edit Referral Details</h2><p class="referral-modal-subtitle">Update the reason and counselor notes for this referral.</p></div>
+            <button type="button" class="referral-modal-close" data-close-modal aria-label="Close">×</button></div>
+        <form method="POST">
+            <input type="hidden" name="action" value="update_referral_details">
+            <input type="hidden" name="referral_id" id="editDetailsReferralId">
+            <div class="referral-field"><label for="editReferralReason">Referral Reason *</label><textarea name="referral_reason" id="editReferralReason" maxlength="2000" required></textarea></div>
+            <div class="referral-field"><label for="editReferralNotes">Counselor Notes</label><textarea name="counselor_notes" id="editReferralNotes" maxlength="10000"></textarea></div>
+            <div class="referral-modal-actions"><button type="button" class="referral-button secondary" data-close-modal>Cancel</button><button type="submit" class="referral-button primary">Save Changes</button></div>
         </form>
     </div>
 </div>
@@ -1579,7 +1514,39 @@ $scheduled_count = count($schedules_by_referral);
             const studentName = document.getElementById('createStudentName');
             if (assessmentInput) assessmentInput.value = createButton.dataset.assessmentId || '';
             if (studentName) studentName.textContent = createButton.dataset.student || 'Student';
+            const reasonInput = document.getElementById('createReferralReason');
+            const notesInput = document.getElementById('counselorNotes');
+            if (reasonInput) reasonInput.value = '';
+            if (notesInput) notesInput.value = '';
             openModal('createReferralModal');
+            return;
+        }
+
+        const detailsButton = event.target.closest('.open-details-modal');
+        if (detailsButton) {
+            const values = {
+                detailsReferralId: '#' + (detailsButton.dataset.referralId || ''),
+                detailsStudentName: detailsButton.dataset.student || 'Student',
+                detailsReferralDate: detailsButton.dataset.created || '—',
+                detailsReferralStatus: detailsButton.dataset.status || '—',
+                detailsAppointment: detailsButton.dataset.appointment || 'Not scheduled',
+                detailsReferralReason: detailsButton.dataset.reason || 'No referral reason recorded.',
+                detailsCounselorNotes: detailsButton.dataset.notes || 'No counselor notes recorded.'
+            };
+            Object.entries(values).forEach(([id, value]) => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = value;
+            });
+            openModal('referralDetailsModal');
+            return;
+        }
+
+        const editDetailsButton = event.target.closest('.open-edit-details-modal');
+        if (editDetailsButton) {
+            document.getElementById('editDetailsReferralId').value = editDetailsButton.dataset.referralId || '';
+            document.getElementById('editReferralReason').value = editDetailsButton.dataset.reason || '';
+            document.getElementById('editReferralNotes').value = editDetailsButton.dataset.notes || '';
+            openModal('editReferralDetailsModal');
             return;
         }
 
@@ -1629,6 +1596,31 @@ $scheduled_count = count($schedules_by_referral);
         }
     });
 })();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const requestedAssessmentId = <?= (int)$requested_assessment_id ?>;
+    const requestedAssessmentValid = <?= $requested_assessment_valid ? 'true' : 'false' ?>;
+    const requestedStudentName = <?= json_encode($requested_assessment_name, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+
+    if (requestedAssessmentId < 1 || !requestedAssessmentValid) {
+        return;
+    }
+
+    const assessmentInput = document.getElementById('createAssessmentId');
+    const studentName = document.getElementById('createStudentName');
+
+    if (assessmentInput) assessmentInput.value = String(requestedAssessmentId);
+    if (studentName) studentName.textContent = requestedStudentName || 'Student';
+
+    const modal = document.getElementById('createReferralModal');
+    if (modal) {
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('referral-modal-open');
+    }
+});
 </script>
 
 
@@ -1780,7 +1772,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const successTitles = {
         create_referral: 'Referral Created Successfully!',
         schedule_referral: 'Appointment Scheduled Successfully!',
-        update_status: 'Changes Saved Successfully!'
+        update_status: 'Changes Saved Successfully!',
+        update_referral_details: 'Referral Details Updated Successfully!'
     };
 
     function showSuccessModal(action, message) {
@@ -1851,7 +1844,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const selectors = [
             '.referral-stats',
             '#referral-calendar',
-            '#ready-assessments',
             '#referrals-list'
         ];
 
@@ -2023,124 +2015,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <!-- Logout Confirmation Modal -->
-<style>
-    .logout-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, .58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
 
-    .logout-overlay.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-overlay.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-icon svg {
-        width: 30px;
-        height: 30px;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-</style>
 
 <div class="logout-overlay" id="logout-modal" aria-hidden="true">
     <section class="logout-dialog"
@@ -2234,5 +2109,74 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+
+<script>
+(function () {
+    const rows = Array.from(document.querySelectorAll('#referrals-list tbody tr[data-assessment-id]'));
+    if (!rows.length) return;
+    const statusUrl = 'assessment_workflow_status.php';
+    let busy = false;
+
+    async function refreshReferralAppointmentIndicators() {
+        if (busy) return;
+        busy = true;
+        try {
+            await Promise.all(rows.map(async function (row) {
+                const assessmentId = row.dataset.assessmentId;
+                const referralId = row.dataset.referralId;
+                const cell = document.getElementById('appointment-state-' + referralId);
+                if (!cell) return;
+                const response = await fetch(statusUrl + '?assessment_id=' + encodeURIComponent(assessmentId), {
+                    credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' }
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) return;
+                if (data.is_scheduled && data.schedule) {
+                    const date = data.schedule.meeting_date || '';
+                    const time = data.schedule.meeting_time || '';
+                    const location = data.schedule.location || '';
+                    const status = data.schedule.status || 'Pending';
+                    cell.textContent = '';
+                    const dateLine = document.createElement('strong');
+                    dateLine.textContent = date ? new Date(date + 'T00:00:00').toLocaleDateString(undefined, {month:'short', day:'2-digit', year:'numeric'}) : 'Scheduled';
+                    const detail = document.createElement('small');
+                    detail.className = 'student-detail';
+                    detail.textContent = [time, location].filter(Boolean).join(' · ');
+                    const state = document.createElement('small');
+                    state.className = 'student-detail';
+                    state.textContent = 'Appointment: ' + status;
+                    cell.append(dateLine, detail, state);
+                } else {
+                    cell.textContent = 'Not scheduled';
+                    cell.className = '';
+                    const label = document.createElement('span');
+                    label.className = 'student-detail';
+                    label.textContent = 'Not scheduled';
+                    cell.replaceChildren(label);
+                }
+            }));
+        } catch (error) {
+            console.warn('Live referral status refresh failed:', error);
+        } finally {
+            busy = false;
+        }
+    }
+    refreshReferralAppointmentIndicators();
+    window.setInterval(refreshReferralAppointmentIndicators, 3000);
+})();
+</script>
+
+<script>
+(function(){
+  const dateEl=document.getElementById('referral-current-date');
+  const timeEl=document.getElementById('referral-current-time');
+  if(!dateEl||!timeEl)return;
+  const d=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'long',month:'short',day:'numeric',year:'numeric'});
+  const t=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',hour12:true});
+  function refresh(){const now=new Date();dateEl.textContent=d.format(now);timeEl.textContent=t.format(now);}
+  refresh();window.setInterval(refresh,1000);
+})();
+</script>
+<script src="../assets/js/counselor/counselor-layout.js?v=<?= (int) @filemtime(__DIR__ . '/../assets/js/counselor/counselor-layout.js') ?>" defer></script>
 </body>
 </html>

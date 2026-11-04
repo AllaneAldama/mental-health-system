@@ -1,0 +1,460 @@
+/* PTC WELLNESS — MONITORING | desktop/default presentation
+   Same design tokens and measurements as Dashboard, Queue and View Assessment.
+   This file owns ONLY page content and its action modals; navigation shell is
+   exclusively styled by counselor-layout.css. Mobile lives in monitoring-mobile.css. */
+body.counselor-page.monitoring-page {
+  --mon-forest:#173d29;--mon-green:#267447;--mon-green-dark:#185b37;
+  --mon-muted:#62776a;--mon-line:#e0eae0;--mon-shadow:0 7px 20px rgba(23,69,39,.045);
+  background:#f5f9f4;color:#294739;
+}
+body.monitoring-page .main-content,body.monitoring-page .main-content *,
+body.monitoring-page .main-content *::before,body.monitoring-page .main-content *::after {box-sizing:border-box}
+body.monitoring-page .main-content {width:100%;max-width:1450px;min-width:0;margin:0 auto;padding:clamp(17px,2.35vw,34px)}
+/* Same hero geometry and clock styling as Assessment Queue. */
+body.monitoring-page .page-header {position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:146px;margin:0 0 19px;padding:clamp(24px,3vw,35px);overflow:hidden;border:1px solid #dceadc;border-radius:19px;background:linear-gradient(115deg,#f8fcf5 0%,#eaf4e9 68%,#deeedc 100%);box-shadow:var(--mon-shadow)}
+body.monitoring-page .page-header::after {content:"";position:absolute;width:240px;height:160px;right:-45px;bottom:-105px;border-radius:50%;background:rgba(136,188,129,.18);pointer-events:none}
+body.monitoring-page .page-header>* {position:relative;z-index:1}
+body.monitoring-page .page-heading {min-width:0}
+body.monitoring-page .monitoring-eyebrow {margin:0 0 7px;color:#3e7950;font-size:.735rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+body.monitoring-page .monitoring-title {margin:2px 0 7px;color:#173925;font-size:clamp(2.2rem,2.85vw,2.8rem);font-weight:800;line-height:1.15;letter-spacing:-.055em}
+body.monitoring-page .monitoring-subtitle {max-width:65ch;margin:0;color:#526a56;font-size:.91rem;line-height:1.65}
+body.monitoring-page .header-right {display:flex;flex:0 0 auto;min-width:0;align-items:center;justify-content:flex-end}
+body.monitoring-page .datetime-card {display:inline-flex;align-items:center;justify-content:center;gap:11px;flex-wrap:nowrap;width:max-content;max-width:100%;min-height:45px;padding:10px 12px;border:1px solid #e2ebe0;border-radius:13px;background:white;color:#3d5a45;box-shadow:0 5px 13px rgba(24,58,31,.05)}
+body.monitoring-page .datetime-item {display:inline-flex;align-items:center;gap:6px;font-size:.8rem;font-weight:600;line-height:1.35;white-space:nowrap;font-variant-numeric:tabular-nums}
+body.monitoring-page .datetime-icon {display:inline-flex;flex:0 0 20px;align-items:center;justify-content:center;width:20px;height:20px;color:#2a6e46}
+body.monitoring-page .datetime-icon svg {display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body.monitoring-page .datetime-divider {flex:0 0 1px;width:1px;height:23px;background:#e2e9de}
+/* Four real monitoring counters. Same 157px height / 22px padding as Queue cards. */
+body.monitoring-page .monitoring-stats {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 19px}
+body.monitoring-page .monitoring-stat {position:relative;isolation:isolate;display:flex;flex-direction:column;min-width:0;min-height:157px;justify-content:space-between;padding:22px;overflow:hidden;border:1px solid #dbeade;border-radius:17px;background:linear-gradient(130deg,#eef8f1,#e4f2e8);box-shadow:var(--mon-shadow)}
+body.monitoring-page .monitoring-stat::after {content:"";position:absolute;z-index:-1;width:128px;height:128px;right:-55px;bottom:-73px;border-radius:50%;background:rgba(30,122,67,.085)}
+body.monitoring-page .monitoring-stat:nth-child(2) {background:linear-gradient(135deg,#fff,#fff3df);border-color:#f2e7cd}
+body.monitoring-page .monitoring-stat:nth-child(3) {background:linear-gradient(135deg,#fff,#eaf4ff);border-color:#dde7f2}
+body.monitoring-page .monitoring-stat:nth-child(4) {background:linear-gradient(135deg,#fff,#f0f7ed)}
+body.monitoring-page .monitoring-stat-label {display:block;max-width:24ch;color:#344d39;font-size:.88rem;font-weight:700;line-height:1.45}
+body.monitoring-page .monitoring-stat>strong {display:block;margin:8px 0 3px;color:#123c28;font-size:clamp(2.3rem,3vw,3rem);font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+body.monitoring-page .monitoring-stat>small {color:#6b796e;font-size:.75rem;line-height:1.5}
+body.monitoring-page .monitoring-panel {min-width:0;margin:0;padding:22px;border:1px solid var(--mon-line);border-radius:17px;background:#fff;box-shadow:var(--mon-shadow)}
+body.monitoring-page .monitoring-panel-heading {display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:16px}
+body.monitoring-page .monitoring-panel-heading h2 {margin:0;color:var(--mon-forest);font-size:1.2rem;font-weight:800;line-height:1.4;letter-spacing:-.025em}
+body.monitoring-page .monitoring-panel-heading p {margin:4px 0 0;color:#708274;font-size:.86rem;line-height:1.6}
+body.monitoring-page .monitoring-record-count {flex:0 0 auto;padding:7px 12px;border-radius:999px;background:#eff7ef;color:#376147;font-size:.76rem;font-weight:650;white-space:nowrap}
+body.monitoring-page .monitoring-alert {padding:14px 17px;border-radius:12px;margin:0 0 16px;font-size:.82rem;line-height:1.6}
+body.monitoring-page .monitoring-alert.error {background:#fff1eb;border:1px solid #f2d2c8;color:#9f4435}
+body.monitoring-page .monitoring-alert.info {background:#eef6ff;border:1px solid #d8e9f9;color:#285f8a}
+/* Eight fields retained. Only the TABLE wrapper may scroll horizontally. */
+body.monitoring-page .monitoring-table-wrap {width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;border:1px solid #e5ede4;border-radius:12px;background:#fff;scrollbar-color:#c7d8c5 transparent;scrollbar-width:thin}
+body.monitoring-page .monitoring-table {width:100%;min-width:1160px;border-collapse:separate;border-spacing:0;table-layout:fixed;margin:0;background:#fff}
+body.monitoring-page .monitoring-table th,body.monitoring-page .monitoring-table td {vertical-align:middle;border-bottom:1px solid #e9efe6;text-align:left;padding:14px 12px;overflow-wrap:anywhere}
+body.monitoring-page .monitoring-table th {vertical-align:middle;height:49px;background:#eaf4eb;color:#315943;font-size:.73rem;font-weight:800;letter-spacing:.018em;line-height:1.35;text-transform:uppercase}
+body.monitoring-page .monitoring-table td {padding-top:20px;padding-bottom:20px;min-height:75px;color:#2a4739;font-size:.78rem;line-height:1.55}
+body.monitoring-page .monitoring-table th:nth-child(1){width:15%}
+body.monitoring-page .monitoring-table th:nth-child(2){width:10%}
+body.monitoring-page .monitoring-table th:nth-child(3){width:15%}
+body.monitoring-page .monitoring-table th:nth-child(4){width:10%}
+body.monitoring-page .monitoring-table th:nth-child(5){width:17%}
+body.monitoring-page .monitoring-table th:nth-child(6){width:9%}
+body.monitoring-page .monitoring-table th:nth-child(7){width:9%}
+body.monitoring-page .monitoring-table th:nth-child(8){width:15%}
+/* MONITORING TABLE ALIGNMENT — desktop only (v32)
+   The header and every item in each of the eight columns share a single center
+   axis. The td is vertically middle-aligned within its row. No other page,
+   table data, or mobile card CSS is modified. */
+@media (min-width: 901px) {
+  body.monitoring-page .monitoring-table thead th,
+  body.monitoring-page .monitoring-table tbody td {
+    text-align: center;
+    vertical-align: middle;
+  }
+  /* Multi-line student, counselor and appointment details inherit the same
+     center alignment as the header above, rather than appearing left-shifted. */
+  body.monitoring-page .monitoring-table tbody td :is(
+    .monitoring-student-name,
+    .monitoring-student-email,
+    .monitoring-counselor-name,
+    .monitoring-appointment-datetime,
+    .monitoring-note-count,
+    .monitoring-muted
+  ) {
+    text-align: center;
+  }
+  body.monitoring-page .monitoring-table tbody td:nth-child(5) {
+    overflow-wrap: break-word;
+  }
+  body.monitoring-page .monitoring-table tbody td:nth-child(5)
+    .monitoring-schedule-status {
+    justify-content: center;
+    margin-inline: auto;
+  }
+  body.monitoring-page .monitoring-table tbody td:nth-child(5)
+    .monitoring-appointment-datetime {
+    display: block;
+    text-align: center;
+    margin-inline: auto;
+  }
+  body.monitoring-page .monitoring-table tbody td:nth-child(7)
+    .open-notes-modal {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    margin-inline: auto;
+    max-width: 100%;
+  }
+  body.monitoring-page .monitoring-table tbody td:nth-child(8)
+    .monitoring-action-group {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    gap: 8px;
+  }
+  body.monitoring-page .monitoring-table tbody td:nth-child(8)
+    .monitoring-action-group .monitoring-button {
+    display: inline-flex;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    justify-content: center;
+    text-align: center;
+    white-space: normal;
+  }
+}
+body.monitoring-page .monitoring-table tbody tr:last-child td {border-bottom:0}
+body.monitoring-page .monitoring-table tbody tr {transition:background-color .18s ease}
+body.monitoring-page .monitoring-table tbody tr:hover {background:#fbfdf9}
+body.monitoring-page .monitoring-student-name,body.monitoring-page .monitoring-counselor-name,body.monitoring-page .monitoring-appointment-cell strong {display:block;color:#173e2b;font-size:.83rem;font-weight:750;line-height:1.4}
+body.monitoring-page .monitoring-student-email,body.monitoring-page .monitoring-appointment-cell small,body.monitoring-page .monitoring-counselor-name+small {display:block;margin-top:4px;color:#718075;font-size:.7rem;line-height:1.45;overflow-wrap:anywhere}
+body.monitoring-page .monitoring-assessment-link {color:#1d7044;font-size:.79rem;font-weight:750;text-decoration:none}
+body.monitoring-page .monitoring-assessment-link:hover {text-decoration:underline}
+body.monitoring-page .monitoring-badge {display:inline-flex;align-items:center;gap:6px;min-height:29px;padding:5px 10px;border-radius:999px;font-size:.71rem;font-weight:750;line-height:1.3;white-space:nowrap}
+body.monitoring-page .monitoring-badge::before {content:"";width:6px;height:6px;flex:0 0 6px;border-radius:50%;background:currentColor}
+body.monitoring-page .badge-warning {background:#fff2dc;color:#9c6414}
+body.monitoring-page .badge-success {background:#eaf6e8;color:#287443}
+body.monitoring-page .monitoring-muted {color:#718075;font-size:.75rem}
+body.monitoring-page .monitoring-schedule-status {display:inline-block;width:fit-content;margin-top:5px;padding:3px 7px;border-radius:999px;background:#edf3e9;color:#315f40!important;font-size:.69rem;font-weight:650}
+/* Appointment cell: status first, one date/time line below; location is not rendered.
+   Scoped to Monitoring so the shared layout and other columns are unaffected. */
+body.monitoring-page .monitoring-appointment-cell .monitoring-schedule-status {
+  display:inline-flex;
+  align-items:center;
+  width:fit-content;
+  max-width:100%;
+  min-height:25px;
+  margin:0 0 6px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#eaf6e8;
+  color:#287443!important;
+  font-size:.71rem;
+  font-weight:750;
+  line-height:1.3;
+  white-space:normal;
+}
+body.monitoring-page .monitoring-appointment-cell .monitoring-schedule-status.is-pending {
+  background:#fff2dc;
+  color:#9c6414!important;
+}
+body.monitoring-page .monitoring-appointment-cell .monitoring-appointment-datetime {
+  display:block;
+  margin:0;
+  color:#4a6654;
+  font-size:.73rem;
+  font-weight:600;
+  line-height:1.5;
+  white-space:normal;
+  overflow-wrap:normal;
+}
+body.monitoring-page .monitoring-note-cell {min-width:110px}
+body.monitoring-page .monitoring-note-count {display:block;margin-top:6px;color:#718075;font-size:.69rem;line-height:1.4}
+body.monitoring-page .monitoring-action-group {display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+body.monitoring-page .monitoring-button,body.monitoring-page .monitoring-form-actions button {display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:8px 12px;border:1px solid transparent;border-radius:9px;background:#267447;color:#fff;font:inherit;font-size:.73rem;font-weight:750;line-height:1.3;text-align:center;white-space:normal;cursor:pointer;text-decoration:none;transition:background .18s ease,transform .18s ease}
+body.monitoring-page .monitoring-button:hover {background:#185b37;transform:translateY(-1px)}
+body.monitoring-page .monitoring-button.secondary {background:#fff;color:#1e6a40;border-color:#bcd6c3}
+body.monitoring-page .monitoring-button.secondary:hover {background:#f0f8f1}
+body.monitoring-page .monitoring-button:disabled {opacity:.6;cursor:wait;transform:none}
+body.monitoring-page .monitoring-empty {padding:42px 20px!important;text-align:center;color:#718075}
+body.monitoring-page .monitoring-empty strong {display:block;color:#22462e;font-size:1rem}
+body.monitoring-page .monitoring-empty span {display:block;margin-top:7px;font-size:.8rem}
+/* Shared footer belongs to counselor-layout.css; no monitoring footer overrides. */
+/* Modal layouts are page-specific; forms/data/actions remain unchanged. */
+.monitoring-modal {position:fixed;inset:0;z-index:1400;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(19,48,30,.52);backdrop-filter:blur(5px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .2s ease,visibility .2s ease}
+.monitoring-modal.show {opacity:1;visibility:visible;pointer-events:auto}
+.monitoring-modal-card {width:min(100%,620px);max-height:min(90vh,850px);overflow-y:auto;overscroll-behavior:contain;padding:28px;border:1px solid #dce8d6;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.2);box-sizing:border-box}
+.monitoring-modal-card.notes-history-card {width:min(100%,760px)}
+.monitoring-modal-heading {display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin:0 0 16px}
+.monitoring-modal-heading .monitoring-eyebrow {margin:0 0 5px;color:#397b50;font-size:.7rem;font-weight:800;letter-spacing:.09em}
+.monitoring-modal-heading h2 {margin:0;color:#173d29;font-size:1.3rem;line-height:1.35}
+.monitoring-modal-heading .modal-student-name {margin:6px 0 0;font-size:.81rem;color:#687d6c}
+.monitoring-modal-close {display:grid;flex:0 0 36px;width:36px;height:36px;place-items:center;border:1px solid #dfe9df;border-radius:10px;background:#f8fbf8;color:#285d3e;font-size:24px;line-height:1;cursor:pointer}
+body.monitoring-page .monitoring-form-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+body.monitoring-page .monitoring-field {display:flex;flex-direction:column;gap:7px;min-width:0}
+body.monitoring-page .monitoring-field.full {grid-column:1/-1}
+body.monitoring-page .monitoring-field label {font-size:.78rem;font-weight:750;color:#294a36}
+body.monitoring-page .monitoring-field select,body.monitoring-page .monitoring-field input,body.monitoring-page .monitoring-field textarea {width:100%;min-height:43px;padding:10px 12px;border:1px solid #cbd9c8;border-radius:10px;background:#fff;color:#244236;font:inherit;font-size:.82rem;box-sizing:border-box}
+body.monitoring-page .monitoring-field textarea {min-height:125px;resize:vertical}
+body.monitoring-page .monitoring-field small {color:#748678;font-size:.72rem;line-height:1.5}
+body.monitoring-page .monitoring-form-actions {display:flex;flex-wrap:wrap;justify-content:flex-end;gap:9px;margin-top:20px}
+body.monitoring-page .monitoring-form-actions button {min-height:42px;padding:10px 17px}
+body.monitoring-page .monitoring-form-actions .secondary {border-color:#cedcce;background:#f0f5ef;color:#285039}
+body.monitoring-page .monitoring-form-actions .secondary:hover {background:#e5efe3}
+body.monitoring-page .counselor-notes-list {display:grid;gap:12px;max-height:55vh;overflow-y:auto;overscroll-behavior:contain;padding:8px 0}
+body.monitoring-page .counselor-note-entry {padding:15px 17px;border:1px solid #dce8d6;border-radius:12px;background:#fbfdf9}
+body.monitoring-page .counselor-note-meta {margin-bottom:7px;color:#36794e;font-size:.75rem;font-weight:700;white-space:pre-wrap}
+body.monitoring-page .counselor-note-body {color:#33483a;font-size:.82rem;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+body.monitoring-page .counselor-notes-empty {padding:24px;text-align:center;color:#718075;border:1px dashed #cbd9c8;border-radius:12px;font-size:.81rem}
+body.monitoring-page .monitoring-row-updated {animation:monitoringRowFlash 1.2s ease}
+@keyframes monitoringRowFlash {0%,100%{background:transparent}35%{background:#edf8e9}}
+/* Align with Dashboard's restrained entrance animation; excludes dialogs/shell. */
+@media(prefers-reduced-motion:no-preference){
+ @keyframes monReveal {from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+ body.monitoring-page .main-content>.page-header,body.monitoring-page .monitoring-stats,body.monitoring-page .monitoring-panel{animation:monReveal .35s ease both}
+ body.monitoring-page .monitoring-stats{animation-delay:.04s}
+ body.monitoring-page .monitoring-panel{animation-delay:.08s}
+}
+@media (min-width:901px) and (max-width:1300px){body.monitoring-page .monitoring-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(prefers-reduced-motion:reduce){body.monitoring-page .main-content *,body.monitoring-page .monitoring-modal,body.monitoring-page .monitoring-button{animation:none!important;transition:none!important}}
+
+/* Preserved original modal, toasts, notes and logout styling (uploaded CSS). */
+.monitoring-toast-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: rgba(25, 43, 33, .42);
+            backdrop-filter: blur(5px);
+        }
+        .monitoring-toast-overlay[hidden] {
+            display: none !important;
+            pointer-events: none !important;
+        }
+
+        .monitoring-toast-card {
+            width: min(100%, 430px);
+            padding: 30px;
+            border-radius: 22px;
+            background: #fff;
+            text-align: center;
+            box-shadow: 0 20px 70px rgba(0, 0, 0, .16);
+        }
+
+        .monitoring-toast-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 62px;
+            height: 62px;
+            margin: 0 auto 16px;
+            border-radius: 50%;
+            background: #e9f5e8;
+            color: #287447;
+            font-size: 30px;
+            font-weight: 800;
+        }
+
+        .monitoring-toast-card h2 {
+            margin: 0 0 10px;
+            color: #244b37;
+            font-size: 22px;
+        }
+
+        .monitoring-toast-card p {
+            margin: 0 0 22px;
+            color: #68796e;
+            overflow-wrap: anywhere;
+        }
+
+        .monitoring-toast-button {
+            min-width: 120px;
+            padding: 12px 24px;
+            border: 0;
+            border-radius: 10px;
+            background: #36794e;
+            color: #fff;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .monitoring-form button:disabled {
+            opacity: .65;
+            cursor: wait;
+        }
+
+        .monitoring-action-group{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+        .monitoring-action-group .monitoring-button{white-space:nowrap}
+        .followup-email-overlay{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(25,43,33,.48)}
+        .followup-email-overlay.is-open{display:flex}
+        .followup-email-card{width:min(100%,720px);max-height:92vh;overflow:auto;padding:30px;border:1px solid #dce8d6;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.2)}
+        .followup-email-card h2{margin:0 0 8px;color:#244b37}
+        .followup-email-card p{color:#68796e}
+        .followup-email-field{display:grid;gap:6px;margin:14px 0}
+        .followup-email-field label{font-weight:600;color:#244b37}
+        .followup-email-field input,.followup-email-field textarea{width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid #cbd9c8;border-radius:9px;font:inherit;color:#244236}
+        .followup-email-field textarea{min-height:190px;resize:vertical}
+        .followup-email-field select{width:100%;box-sizing:border-box;padding:12px;border:1px solid #cbd9c8;border-radius:9px;background:#fff;color:#244236;font:inherit}
+        .followup-template-help{margin:4px 0 14px;color:#68796e;font-size:13px;line-height:1.5}
+        
+        .followup-email-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:18px}
+        .followup-email-actions button{padding:11px 18px;border:0;border-radius:9px;background:#36794e;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+        .followup-email-actions .secondary{background:#edf2eb;color:#244b37}
+        .followup-email-actions button:disabled{opacity:.65;cursor:wait}
+
+        .monitoring-counselor-name,
+        .monitoring-appointment-cell strong {
+            display: block;
+            color: #244b37;
+        }
+        .monitoring-appointment-cell small,
+        .monitoring-counselor-name + small {
+            display: block;
+            margin-top: 4px;
+            color: #718075;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        .monitoring-muted {
+            color: #718075;
+            font-size: 12px;
+        }
+        .monitoring-schedule-status {
+            display: inline-block;
+            width: fit-content;
+            margin-top: 5px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #edf3e9;
+            color: #315f40 !important;
+            font-weight: 600;
+        }
+
+        .monitoring-note-cell { min-width: 125px; }
+        .monitoring-note-cell .monitoring-button { display:block; }
+        .monitoring-note-count { display:block; margin-top:5px; color:#718075; font-size:11px; }
+        .notes-history-card { width:min(100%,760px); }
+        .counselor-notes-list { display:grid; gap:12px; max-height:55vh; overflow:auto; padding:18px 0; }
+        .counselor-note-entry { border:1px solid #dce8d6; border-radius:12px; padding:15px 17px; background:#fbfdf9; }
+        .counselor-note-meta { color:#36794e; font-size:12px; font-weight:700; margin-bottom:8px; white-space:pre-wrap; }
+        .counselor-note-body { color:#33483a; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.65; }
+        .counselor-notes-empty { padding:24px; text-align:center; color:#718075; border:1px dashed #cbd9c8; border-radius:12px; }
+        .monitoring-row-updated { animation: monitoringRowFlash 1.2s ease; }
+
+        @keyframes monitoringRowFlash {
+            0%, 100% { background: transparent; }
+            35% { background: #edf8e9; }
+        }
+
+/* Extracted from monitoring(6).php; page-specific styles preserved. */
+
+.logout-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(15, 35, 20, .58);
+        backdrop-filter: blur(5px);
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity .25s ease, visibility .25s ease;
+    }
+
+    .logout-overlay.is-open {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .logout-dialog {
+        width: 100%;
+        max-width: 430px;
+        padding: 32px 28px;
+        border-radius: 20px;
+        background: #fff;
+        text-align: center;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
+        transform: translateY(16px) scale(.96);
+        transition: transform .25s ease;
+    }
+
+    .logout-overlay.is-open .logout-dialog {
+        transform: translateY(0) scale(1);
+    }
+
+    .logout-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        background: #e8f3e7;
+        color: #3f7840;
+    }
+
+    .logout-icon svg {
+        width: 30px;
+        height: 30px;
+    }
+
+    .logout-dialog h2 {
+        margin: 0 0 12px;
+        color: #243629;
+        font-size: 21px;
+        line-height: 1.4;
+    }
+
+    .logout-dialog p {
+        margin: 0 0 25px;
+        color: #68736b;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .logout-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .logout-actions button {
+        width: 100%;
+        min-height: 46px;
+        padding: 12px 18px;
+        border: 0;
+        border-radius: 10px;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .2s ease, transform .2s ease;
+    }
+
+    .logout-confirm {
+        background: #5e8b59;
+        color: #fff;
+    }
+
+    .logout-confirm:hover {
+        background: #497446;
+    }
+
+    .logout-cancel {
+        background: #f0f3ef;
+        color: #354438;
+    }
+
+    .logout-cancel:hover {
+        background: #e3e9e1;
+    }
+
+    .logout-actions button:active {
+        transform: scale(.98);
+    }
+

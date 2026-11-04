@@ -1,1212 +1,251 @@
-
 <?php
 require_once __DIR__ . '/../includes/counselor_session.php';
 require_once __DIR__ . '/../config/database.php';
 
-if (
-    !isset($_SESSION['role_type']) ||
-    $_SESSION['role_type'] !== 'counselor'
-) {
-    header("Location: ../auth/login.php");
+if (!isset($_SESSION['user_id']) || ($_SESSION['role_type'] ?? '') !== 'counselor') {
+    header('Location: ../auth/login.php');
     exit();
 }
 
-require_once __DIR__ . "/../config/database.php";
-
-function counselor_table_exists($conn, $table)
-{
-    $table = mysqli_real_escape_string($conn, $table);
-    $result = mysqli_query($conn, "SHOW TABLES LIKE '{$table}'");
-    return $result && mysqli_num_rows($result) > 0;
-}
-
-function counselor_column_exists($conn, $table, $column)
-{
-    $column = mysqli_real_escape_string($conn, $column);
-    $result = mysqli_query(
-        $conn,
-        "SHOW COLUMNS FROM `{$table}` LIKE '{$column}'"
-    );
-
-    return $result && mysqli_num_rows($result) > 0;
-}
-
-function counselor_count($conn, $sql)
-{
+/* The original dashboard remains database-driven; only read-only queries are added for
+   the four status cards, the 30-day trend and recent activity. */
+function counselor_escape($value) { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+function dashboard_count($conn, $sql) {
     $result = mysqli_query($conn, $sql);
-
-    if (!$result) {
-        return 0;
-    }
-
+    if (!$result) { error_log('Dashboard count query: ' . mysqli_error($conn)); return 0; }
     $row = mysqli_fetch_row($result);
-    return (int) ($row[0] ?? 0);
+    return (int)($row[0] ?? 0);
+}
+function dashboard_has_table($conn, $table) {
+    $escaped = mysqli_real_escape_string($conn, $table);
+    $result = mysqli_query($conn, "SHOW TABLES LIKE '{$escaped}'");
+    return $result && mysqli_num_rows($result) > 0;
+}
+function dashboard_has_column($conn, $table, $column) {
+    $escaped = mysqli_real_escape_string($conn, $column);
+    $result = mysqli_query($conn, "SHOW COLUMNS FROM `{$table}` LIKE '{$escaped}'");
+    return $result && mysqli_num_rows($result) > 0;
 }
 
-function counselor_first_column($conn, $table, $columns)
-{
-    foreach ($columns as $column) {
-        if (counselor_column_exists($conn, $table, $column)) {
-            return $column;
-        }
-    }
-
-    return null;
-}
-
-function counselor_escape($value)
-{
-    return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
-}
-
-$total_students = 0;
-$total_assessments = 0;
-$pending_assessments = 0;
-$reviewed_assessments = 0;
-$total_counselors = 0;
-$recent_assessments = [];
+$total_students = $total_counselors = $total_assessments = 0;
+$pending_assessments = $reviewed_assessments = $monitoring_assessments = $referred_assessments = 0;
+$active_referrals = 0;
+$recent_assessments = $recent_activities = [];
 $dashboard_notice = '';
+$has_users = dashboard_has_table($conn, 'user_data');
+$has_assessments = dashboard_has_table($conn, 'assessment_data');
+$has_referrals = dashboard_has_table($conn, 'referral_data');
 
-/* Account totals */
-if (counselor_table_exists($conn, 'user_data')) {
-    $active_filter = counselor_column_exists(
-        $conn,
-        'user_data',
-        'status'
-    ) ? " AND status = 'active'" : '';
-
-    $total_students = counselor_count(
-        $conn,
-        "SELECT COUNT(*) FROM user_data
-         WHERE role_type = 'student'{$active_filter}"
-    );
-
-    $total_counselors = counselor_count(
-        $conn,
-        "SELECT COUNT(*) FROM user_data
-         WHERE role_type = 'counselor'{$active_filter}"
-    );
+if ($has_users) {
+    $activeFilter = dashboard_has_column($conn, 'user_data', 'status') ? " AND status = 'active'" : '';
+    $total_students = dashboard_count($conn, "SELECT COUNT(*) FROM student_profiles");
+    $total_counselors = dashboard_count($conn, "SELECT COUNT(*) FROM user_data WHERE role_type='counselor'{$activeFilter}");
 }
-
-/*
- * Assessment table detection.
- * Confirm this candidate list against your actual database schema.
- */
-$assessment_table = null;
-
-$assessment_candidates = [
-    'assessment_data',
-    'needs_assessment',
-    'needs_assessment_responses',
-    'assessment_submissions',
-    'assessment_records',
-    'assessments'
-];
-
-foreach ($assessment_candidates as $candidate) {
-    if (counselor_table_exists($conn, $candidate)) {
-        $assessment_table = $candidate;
-        break;
+if ($has_assessments) {
+    $total_assessments = dashboard_count($conn, "SELECT COUNT(*) FROM assessment_data WHERE assessment_type='Needs Assessment'");
+    if (dashboard_has_column($conn, 'assessment_data', 'status')) {
+        $pending_assessments = dashboard_count($conn, "SELECT COUNT(*) FROM assessment_data WHERE assessment_type='Needs Assessment' AND LOWER(TRIM(status))='pending'");
+        $reviewed_assessments = dashboard_count($conn, "SELECT COUNT(*) FROM assessment_data WHERE assessment_type='Needs Assessment' AND LOWER(TRIM(status))='reviewed'");
+        $monitoring_assessments = dashboard_count($conn, "SELECT COUNT(*) FROM assessment_data WHERE assessment_type='Needs Assessment' AND LOWER(TRIM(status))='monitoring'");
+        $referred_assessments = dashboard_count($conn, "SELECT COUNT(*) FROM assessment_data WHERE assessment_type='Needs Assessment' AND LOWER(TRIM(status))='referred'");
     }
+    $sql = "SELECT a.assessment_id, a.assessment_date AS submitted_date,
+                a.status AS review_status, a.reviewed_at AS review_date,
+                COALESCE(NULLIF(u.alias,''),u.fullname,'Student') AS student_name
+            FROM assessment_data a
+            LEFT JOIN student_profiles u ON u.student_id=a.student_id
+            WHERE a.assessment_type='Needs Assessment'
+            ORDER BY a.assessment_date DESC, a.assessment_id DESC LIMIT 8";
+    $res = mysqli_query($conn, $sql);
+    if ($res) { while ($r=mysqli_fetch_assoc($res)) $recent_assessments[]=$r; }
+    else { $dashboard_notice='Could not load recent assessment records.'; error_log('Dashboard recent: ' . mysqli_error($conn)); }
+} else { $dashboard_notice='No assessment_data table was found.'; }
+if ($has_referrals) {
+    $active_referrals = dashboard_count($conn, "SELECT COUNT(*) FROM referral_data WHERE referral_status IN ('Pending','Accepted')");
 }
-
-if ($assessment_table !== null) {
-    $total_assessments = counselor_count(
-        $conn,
-        "SELECT COUNT(*) FROM `{$assessment_table}`"
-    );
-
-    $status_column = counselor_first_column(
-        $conn,
-        $assessment_table,
-        ['status', 'review_status']
-    );
-
-    if ($status_column !== null) {
-        $pending_assessments = counselor_count(
-            $conn,
-            "SELECT COUNT(*) FROM `{$assessment_table}`
-             WHERE LOWER(TRIM(`{$status_column}`)) = 'pending'"
-        );
-
-        $reviewed_assessments = counselor_count(
-            $conn,
-            "SELECT COUNT(*) FROM `{$assessment_table}`
-             WHERE LOWER(TRIM(`{$status_column}`)) = 'reviewed'"
-        );
-    } elseif (
-        counselor_column_exists(
-            $conn,
-            $assessment_table,
-            'is_reviewed'
-        )
-    ) {
-        $pending_assessments = counselor_count(
-            $conn,
-            "SELECT COUNT(*) FROM `{$assessment_table}`
-             WHERE is_reviewed = 0"
-        );
-
-        $reviewed_assessments = counselor_count(
-            $conn,
-            "SELECT COUNT(*) FROM `{$assessment_table}`
-             WHERE is_reviewed = 1"
-        );
-    }
-
-    $id_column = counselor_first_column(
-        $conn,
-        $assessment_table,
-        ['assessment_id', 'id', 'submission_id']
-    );
-
-    $date_column = counselor_first_column(
-        $conn,
-        $assessment_table,
-        [
-            'assessment_date',
-            'submitted_at',
-            'created_at',
-            'date_submitted'
-        ]
-    );
-
-    // Use an actual review timestamp if the assessment table has one.
-    // Do not substitute updated_at because it may represent unrelated edits.
-    $review_date_column = counselor_first_column(
-        $conn,
-        $assessment_table,
-        [
-            'reviewed_at',
-            'review_date',
-            'reviewed_on',
-            'review_timestamp',
-            'reviewed_datetime'
-        ]
-    );
-
-    $user_column = counselor_first_column(
-        $conn,
-        $assessment_table,
-        ['user_id', 'student_id']
-    );
-
-    $join = '';
-    $student_fields = "'' AS student_name";
-
-    if (
-        $user_column &&
-        counselor_table_exists($conn, 'user_data') &&
-        counselor_column_exists($conn, 'user_data', 'user_id')
-    ) {
-        $name_expression = counselor_column_exists(
-            $conn,
-            'user_data',
-            'alias'
-        ) ? "NULLIF(u.alias, '')" : "NULL";
-
-        if (counselor_column_exists($conn, 'user_data', 'fullname')) {
-            $name_expression = counselor_column_exists(
-                $conn,
-                'user_data',
-                'alias'
-            )
-                ? "COALESCE(NULLIF(u.alias, ''), u.fullname)"
-                : "u.fullname";
-        }
-
-        $student_fields = "{$name_expression} AS student_name";
-
-        $join = " LEFT JOIN user_data u
-                  ON u.user_id = a.`{$user_column}`";
-    }
-
-    $id_expression = $id_column
-        ? "a.`{$id_column}` AS assessment_id"
-        : "0 AS assessment_id";
-
-    $date_expression = $date_column
-        ? "a.`{$date_column}` AS submitted_date"
-        : "NULL AS submitted_date";
-
-    $review_date_expression = $review_date_column
-        ? "a.`{$review_date_column}` AS review_date"
-        : "NULL AS review_date";
-
-    if ($status_column) {
-        $status_expression = "a.`{$status_column}` AS review_status";
-    } elseif (
-        counselor_column_exists(
-            $conn,
-            $assessment_table,
-            'is_reviewed'
-        )
-    ) {
-        $status_expression =
-            "CASE WHEN a.is_reviewed = 1
-             THEN 'Reviewed' ELSE 'Pending' END AS review_status";
-    } else {
-        $status_expression = "'Pending' AS review_status";
-    }
-
-    $order_expression = $date_column
-        ? "a.`{$date_column}` DESC"
-        : ($id_column ? "a.`{$id_column}` DESC" : "1 DESC");
-
-    $sql = "SELECT
-                {$id_expression},
-                {$date_expression},
-                {$status_expression},
-                {$review_date_expression},
-                {$student_fields}
-            FROM `{$assessment_table}` a
-            {$join}
-            ORDER BY {$order_expression}
-            LIMIT 8";
-
-    $result = mysqli_query($conn, $sql);
-
-    if ($result) {
-        while ($row = mysqli_fetch_assoc($result)) {
-            $recent_assessments[] = $row;
-        }
-    } else {
-        $dashboard_notice =
-            'Could not load assessment records. Please verify the assessment table schema.';
-    }
-} else {
-    $dashboard_notice =
-        'No recognized assessment table was found. Verify the table name for Needs Assessment Survey submissions.';
-}
-
-// Latest submitted Needs Assessment ID.
-$latest_assessment_id = 0;
-
-if (
-    counselor_table_exists($conn, 'assessment_data') &&
-    counselor_column_exists($conn, 'assessment_data', 'assessment_id') &&
-    counselor_column_exists($conn, 'assessment_data', 'assessment_type')
-) {
-    $latest_assessment_id = counselor_count(
-        $conn,
-        "SELECT COALESCE(MAX(assessment_id), 0)
-         FROM assessment_data
-         WHERE assessment_type = 'Needs Assessment'"
-    );
-}
-
-$counselor_name =
-    $_SESSION['fullname'] ??
-    $_SESSION['alias'] ??
-    'Counselor';
-
 $workflow_total = $pending_assessments + $reviewed_assessments;
+$reviewed_percentage = $workflow_total > 0 ? ($reviewed_assessments / $workflow_total) * 100 : 0;
+$counselor_name = $_SESSION['fullname'] ?? $_SESSION['alias'] ?? 'Counselor';
 
-$pending_percentage = $workflow_total > 0
-    ? ($pending_assessments / $workflow_total) * 100
-    : 0;
+/* Actual submission counts, grouped into five successive six-day periods (30 days total). */
+$trend_labels = []; $trend_values = [];
+$trend_data = [];
+if ($has_assessments) {
+    $q = mysqli_query($conn, "SELECT DATE(assessment_date) AS submitted_day, COUNT(*) AS total
+            FROM assessment_data WHERE assessment_type='Needs Assessment' AND assessment_date >= DATE_SUB(CURDATE(), INTERVAL 29 DAY)
+            AND assessment_date < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+            GROUP BY DATE(assessment_date)");
+    if ($q) { while ($row = mysqli_fetch_assoc($q)) $trend_data[$row['submitted_day']] = (int)$row['total']; }
+}
+$today = new DateTimeImmutable('today', new DateTimeZone('Asia/Manila'));
+for ($bucket=0; $bucket<5; $bucket++) {
+    $start = $today->modify('-' . (29 - $bucket*6) . ' days');
+    $count=0;
+    for($day=0;$day<6;$day++) $count += $trend_data[$start->modify("+{$day} days")->format('Y-m-d')] ?? 0;
+    $trend_labels[]=$start->format('M j');
+    $trend_values[]=$count;
+}
+$trend_max=max(1,max($trend_values));
+$trend_points=[];
+for ($i=0;$i<5;$i++) {
+    $x=35+$i*105;
+    $y=153-(int)round(($trend_values[$i]/$trend_max)*120);
+    $trend_points[]=[$x,$y];
+}
+$svg_points=implode(' ',array_map(fn($p)=>$p[0].','.$p[1],$trend_points));
+$svg_fill='35,153 '.$svg_points.' 455,153';
 
-$reviewed_percentage = $workflow_total > 0
-    ? ($reviewed_assessments / $workflow_total) * 100
-    : 0;
-    $latest_assessment_id = 0;
-
-    if (
-        counselor_table_exists($conn, 'assessment_data') &&
-        counselor_column_exists($conn, 'assessment_data', 'assessment_id')
-    ) {
-        $latest_assessment_id = counselor_count(
-            $conn,
-            "SELECT COALESCE(MAX(assessment_id), 0)
-            FROM assessment_data"
-        );
-    }
+if (dashboard_has_table($conn, 'system_monitor_events')) {
+    $q=mysqli_query($conn, "SELECT event_type, created_at, details FROM system_monitor_events
+            WHERE event_type IN ('referral_created','user_updated','user_status_changed')
+            ORDER BY event_id DESC LIMIT 4");
+    if ($q) { while ($row=mysqli_fetch_assoc($q)) $recent_activities[]=$row; }
+}
+function dashboard_activity_label($type) {
+    return match ($type) {
+        'referral_created'=>'Referral created',
+        'user_updated'=>'Account updated',
+        'user_status_changed'=>'Account status updated',
+        default=>'System activity'
+    };
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Counselor Dashboard | PTC Wellness</title>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet"
-    >
-
-    <link rel="stylesheet" href="../assets/css/counselor.css">
-    <style>
-        .recent-panel .events-table {
-            table-layout: auto;
-            width: 100%;
-        }
-
-        .recent-panel .events-table th,
-        .recent-panel .events-table td {
-            white-space: nowrap;
-        }
-
-        .recent-panel .events-table th:first-child,
-        .recent-panel .events-table td:first-child {
-            white-space: normal;
-            min-width: 180px;
-        }
-
-        .recent-panel .review-date {
-            color: #65796b;
-            font-size: 0.78rem;
-        }
-    </style>
-<style>
-
-    /* Logout confirmation modal */
-     .logout-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: rgba(15, 35, 20, .58);
-        backdrop-filter: blur(5px);
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity .25s ease, visibility .25s ease;
-    }
-
-    .logout-modal.is-open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .logout-dialog {
-        width: 100%;
-        max-width: 430px;
-        padding: 32px 28px;
-        border-radius: 20px;
-        background: #fff;
-        text-align: center;
-        box-shadow: 0 24px 70px rgba(0, 0, 0, .22);
-        transform: translateY(16px) scale(.96);
-        transition: transform .25s ease;
-    }
-
-    .logout-modal.is-open .logout-dialog {
-        transform: translateY(0) scale(1);
-    }
-
-    .logout-modal-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #e8f3e7;
-        color: #3f7840;
-    }
-
-    .logout-modal-icon svg {
-        width: 30px;
-        height: 30px;
-        fill: none;
-        stroke: currentColor;
-        stroke-width: 1.8;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-    }
-
-    .logout-dialog h2 {
-        margin: 0 0 12px;
-        color: #243629;
-        font-size: 21px;
-        line-height: 1.4;
-    }
-
-    .logout-dialog p {
-        margin: 0 0 25px;
-        color: #68736b;
-        font-size: 14px;
-        line-height: 1.7;
-    }
-
-    .logout-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .logout-actions button {
-        width: 100%;
-        min-height: 46px;
-        padding: 12px 18px;
-        border: 0;
-        border-radius: 10px;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .2s ease, transform .2s ease;
-    }
-
-    .logout-confirm {
-        background: #5e8b59;
-        color: #fff;
-    }
-
-    .logout-confirm:hover {
-        background: #497446;
-    }
-
-    .logout-cancel {
-        background: #f0f3ef;
-        color: #354438;
-    }
-
-    .logout-cancel:hover {
-        background: #e3e9e1;
-    }
-
-    .logout-actions button:active {
-        transform: scale(.98);
-    }
-
-    @media (max-width: 480px) {
-        .logout-dialog {
-            padding: 28px 20px;
-        }
-
-        .logout-dialog h2 {
-            font-size: 19px;
-        }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .logout-modal,
-        .logout-dialog,
-        .logout-actions button {
-            transition: none;
-        }
-    }
-</style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Counselor Dashboard | PTC Wellness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/counselor/counselor-base.css">
+<link rel="stylesheet" href="../assets/css/counselor/counselor-layout.css?v=<?= (int) (@filemtime(__DIR__ . "/../assets/css/counselor/counselor-layout.css") ?: 12) ?>">
+<link rel="stylesheet" href="../assets/css/counselor/dashboard.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/dashboard.css') ?: 9) ?>">
+<link rel="stylesheet" href="../assets/css/counselor/dashboard-mobile.css?v=<?= (int) (@filemtime(__DIR__ . '/../assets/css/counselor/dashboard-mobile.css') ?: 9) ?>" media="(max-width: 900px)">
 </head>
-
-<body class="counselor-page">
-
-<div class="app-shell">
-
-    <aside class="sidebar">
-        <a class="brand" href="dashboard.php">
-            <span class="brand-mark" aria-hidden="true">
-                <svg viewBox="0 0 32 32">
-                    <path d="M16 27V15"></path>
-                    <path d="M16 17C8 17 5 12 5 5c7 0 12 4 11 12Z"></path>
-                    <path d="M16 21c0-7 4-11 11-11 0 7-4 11-11 11Z"></path>
-                </svg>
-            </span>
-
-            <span class="brand-copy">
-                <strong class="brand-name">PTC Wellness</strong>
-                <small class="brand-tagline">Mental Health &amp; Well-being</small>
-            </span>
-        </a>
-
-        <nav class="nav" aria-label="Counselor navigation">
-
-            <a class="nav-link active" href="dashboard.php">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="7" height="7" rx="1"></rect>
-                        <rect x="14" y="3" width="7" height="7" rx="1"></rect>
-                        <rect x="3" y="14" width="7" height="7" rx="1"></rect>
-                        <rect x="14" y="14" width="7" height="7" rx="1"></rect>
-                    </svg>
-                </span>
-                Dashboard
-            </a>
-
-            <a class="nav-link" href="assessment_queue.php">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M8 6h13"></path>
-                        <path d="M8 12h13"></path>
-                        <path d="M8 18h13"></path>
-                        <path d="m3 6 1 1 2-2"></path>
-                        <path d="m3 12 1 1 2-2"></path>
-                        <path d="m3 18 1 1 2-2"></path>
-                    </svg>
-                </span>
-                Assessments Queue
-            </a>
-
-            <a class="nav-link" href="monitoring.php">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M3 12s3.2-7 9-7 9 7 9 7-3.2 7-9 7-9-7-9-7Z"></path>
-                        <circle cx="12" cy="12" r="3"></circle>
-                    </svg>
-                </span>
-                Monitoring
-            </a>
-
-            <a class="nav-link" href="referral.php">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M7 17 17 7"></path>
-                        <path d="M7 7h10v10"></path>
-                        <path d="M5 5v14h14"></path>
-                    </svg>
-                </span>
-                Referral
-            </a>
-
-            <a class="nav-link" href="assessment_history.php">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M12 7v5l3 2"></path>
-                    </svg>
-                </span>
-                Assessment History
-            </a>
-
-            <a class="nav-link" href="profile.php">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="8" r="4"></circle>
-                        <path d="M4 21a8 8 0 0 1 16 0"></path>
-                    </svg>
-                </span>
-                Profile
-            </a>
-
-            <a class="nav-link logout" href="../auth/logout.php?portal=counselor">
-                <span class="nav-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M10 17l5-5-5-5"></path>
-                        <path d="M15 12H3"></path>
-                        <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-                    </svg>
-                </span>
-                Logout
-            </a>
-
-        </nav>
-
-        <div class="sidebar-footer">
-            <strong>Well-being matters.</strong>
-            <span>Supporting a healthier campus, one step at a time.</span>
-        </div>
-    </aside>
-
-    <main class="main-content">
-
-    <header class="page-header">
-        <div class="page-heading">
-            <p class="eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
-            <h1 class="page-title">Counselor Dashboard</h1>
-
-            <p class="page-subtitle">
-                Welcome back, <?= counselor_escape($counselor_name) ?>.
-                Here's your assessment overview.
-            </p>
-        </div>
-
-        <div class="header-right">
-            <div class="datetime-card">
-                <div class="datetime-item">
-                    <span class="datetime-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <rect x="3" y="5" width="18" height="16" rx="2"></rect>
-                            <path d="M16 3v4M8 3v4M3 10h18"></path>
-                        </svg>
-                    </span>
-
-                    <span id="current-date">Loading date...</span>
-                </div>
-
-                <span class="datetime-divider"></span>
-
-                <div class="datetime-item">
-                    <span class="datetime-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="9"></circle>
-                            <path d="M12 7v5l3 2"></path>
-                        </svg>
-                    </span>
-
-                    <span id="current-time">Loading time...</span>
-                </div>
-            </div>
-
-            <div class="header-status">
-                <span class="status-dot"></span>
-                Counselor Portal
-            </div>
-        </div>
-    </header>
-
-        <section class="metric-grid" aria-label="Assessment summary">
-
-            <article class="metric-card">
-                <div class="metric-top">
-                    <div class="metric-label">Total Student Records</div>
-                    <span class="metric-symbol">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="10" cy="7" r="4"></circle>
-                            <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="metric-value"><?= number_format($total_students) ?></div>
-            </article>
-
-            <article class="metric-card">
-                <div class="metric-top">
-                    <div class="metric-label">Total Assessments</div>
-                    <span class="metric-symbol">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"></path>
-                            <path d="M14 2v6h6"></path>
-                            <path d="M8 13h8M8 17h8"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="metric-value"><?= number_format($total_assessments) ?></div>
-            </article>
-
-            <article class="metric-card">
-                <div class="metric-top">
-                    <div class="metric-label">Active Counselors</div>
-                    <span class="metric-symbol">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="10" cy="7" r="4"></circle>
-                            <path d="M19 8v6M16 11h6"></path>
-                        </svg>
-                    </span>
-                </div>
-                <div class="metric-value"><?= number_format($total_counselors) ?></div>
-            </article>
-
-        </section>
-
-        <section class="system-panel workflow-panel">
-            <div class="section-heading">
-                <div>
-                    <h2>Assessment Overview</h2>
-                    <p class="section-description">
-                        Monitor the review progress of submitted Needs Assessment Surveys.
-                    </p>
-                </div>
-            </div>
-
-            <div class="workflow-cards">
-                <div class="workflow-card pending-card">
-                    <span class="workflow-label">Pending Assessments</span>
-                    <strong><?= number_format($pending_assessments) ?></strong>
-                    <small>Awaiting counselor review</small>
-                </div>
-
-                <div class="workflow-card reviewed-card">
-                    <span class="workflow-label">Reviewed Assessments</span>
-                    <strong><?= number_format($reviewed_assessments) ?></strong>
-                    <small>Marked as reviewed</small>
-                </div>
-            </div>
-
-            <div class="progress-heading">
-                <span>Review progress</span>
-                <strong><?= (int) round($reviewed_percentage) ?>%</strong>
-            </div>
-
-            <div
-                class="progress-track"
-                role="img"
-                aria-label="<?= (int) round($reviewed_percentage) ?> percent of assessments reviewed"
-            >
-                <span
-                    class="progress-reviewed"
-                    style="width: <?= number_format($reviewed_percentage, 2, '.', '') ?>%"
-                ></span>
-            </div>
-
-            <div class="workflow-legend">
-                <span><i class="legend-pending"></i> Pending</span>
-                <span><i class="legend-reviewed"></i> Reviewed</span>
-            </div>
-
-            <p class="privacy-note">
-                Review status reflects workflow progress only. It is not a clinical diagnosis
-                or an automatic classification of a student's mental health.
-            </p>
-        </section>
-
-        <section class="monitoring-section">
-            <div class="monitoring-heading">
-                <span class="section-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M4 19V5"></path>
-                        <path d="M4 19h17"></path>
-                        <path d="M8 15v-4M13 15V7M18 15V3"></path>
-                    </svg>
-                </span>
-
-                <div>
-                    <h2>Quick Actions</h2>
-                    <p class="section-description">
-                        Access common counselor tasks.
-                    </p>
-                </div>
-            </div>
-
-            <div class="monitoring-grid">
-
-                <a class="monitoring-card action-card" href="assessment_queue.php">
-                    <span class="monitoring-symbol">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M8 6h13M8 12h13M8 18h13"></path>
-                            <path d="m3 6 1 1 2-2M3 12l1 1 2-2M3 18l1 1 2-2"></path>
-                        </svg>
-                    </span>
-                    <span class="monitoring-copy">
-                        <h3>Assessments Queue</h3>
-                        <strong>Review submissions</strong>
-                        <p>Open submitted assessments for review.</p>
-                    </span>
-                </a>
-
-                <a class="monitoring-card action-card" href="monitoring.php">
-                    <span class="monitoring-symbol">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M3 12s3-7 9-7 9 7 9 7-3 7-9 7-9-7-9-7Z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                    </span>
-                    <span class="monitoring-copy">
-                        <h3>Student Monitoring</h3>
-                        <strong>View monitoring</strong>
-                        <p>Access available student monitoring records.</p>
-                    </span>
-                </a>
-
-                <a class="monitoring-card action-card" href="referral.php">
-                    <span class="monitoring-symbol">
-                        <svg viewBox="0 0 24 24">
-                            <path d="M7 17 17 7M7 7h10v10"></path>
-                            <path d="M5 5v14h14"></path>
-                        </svg>
-                    </span>
-                    <span class="monitoring-copy">
-                        <h3>Referral</h3>
-                        <strong>Manage referrals</strong>
-                        <p>Open the referral module.</p>
-                    </span>
-                </a>
-
-            </div>
-        </section>
-
-        <section class="system-panel recent-panel">
-            <div class="section-heading">
-                <div>
-                    <h2>Recent Assessments</h2>
-                    <p class="section-description">
-                        Latest submissions recorded in the system.
-                    </p>
-                </div>
-
-                <a class="section-link" href="assessment_history.php">
-                    View history →
-                </a>
-            </div>
-
-            <div class="events-table-wrap">
-                <table class="events-table">
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Assessment ID</th>
-                            <th>Date Submitted</th>
-                            <th>Review Status</th>
-                            <th>Review Date</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                    <?php if ($recent_assessments): ?>
-                        <?php foreach ($recent_assessments as $item): ?>
-                            <?php
-                            $student_name = trim(
-                                (string) ($item['student_name'] ?? '')
-                            );
-
-                            if ($student_name === '') {
-                                $student_name = 'Student';
-                            }
-
-                            $assessment_id = (int) (
-                                $item['assessment_id'] ?? 0
-                            );
-
-                            $status = trim(
-                                (string) ($item['review_status'] ?? 'Pending')
-                            );
-
-                            $is_reviewed = strtolower($status) === 'reviewed';
-
-                            $submitted_date = $item['submitted_date'] ?? null;
-
-                            $formatted_date = $submitted_date
-                                ? date('M d, Y · g:i A', strtotime($submitted_date))
-                                : '—';
-
-                            $review_date = $item['review_date'] ?? null;
-                            $formatted_review_date = (
-                                $is_reviewed &&
-                                $review_date &&
-                                $review_date !== '0000-00-00 00:00:00'
-                            )
-                                ? date('M d, Y · g:i A', strtotime($review_date))
-                                : '—';
-                            ?>
-
-                            <tr>
-                            <td>
-                                <div class="dashboard-student">
-                                    <span class="dashboard-student-avatar" aria-hidden="true">
-                                        <svg viewBox="0 0 24 24">
-                                            <circle cx="12" cy="8" r="4"></circle>
-                                            <path d="M4 21a8 8 0 0 1 16 0"></path>
-                                        </svg>
-                                    </span>
-
-                                    <span class="dashboard-student-details">
-                                        <span class="dashboard-student-name">
-                                            <?= counselor_escape($student_name) ?>
-                                        </span>
-                                        <span class="dashboard-student-id">
-                                            Assessment #<?= $assessment_id ?>
-                                        </span>
-                                    </span>
-                                </div>
-                            </td>
-
-
-                                <td>
-                                    <?= $assessment_id > 0
-                                        ? '#' . $assessment_id
-                                        : '—' ?>
-                                </td>
-
-                                <td><?= counselor_escape($formatted_date) ?></td>
-
-                                <td>
-                                    <span class="review-badge <?= $is_reviewed
-                                        ? 'review-badge-reviewed'
-                                        : 'review-badge-pending' ?>">
-                                        <?= counselor_escape($status ?: 'Pending') ?>
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <span class="review-date">
-                                        <?= counselor_escape($formatted_review_date) ?>
-                                    </span>
-                                </td>
-
-                                <td>
-                                    <?php if ($assessment_id > 0): ?>
-                                        <a
-                                            class="table-action"
-                                            href="view_assessment.php?id=<?= $assessment_id ?>"
-                                        >
-                                            View →
-                                        </a>
-                                    <?php else: ?>
-                                        —
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <tr>
-                            <td colspan="6" class="empty-state">
-                                No assessment records to display yet.
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <?php if ($dashboard_notice !== ''): ?>
-            <div class="dashboard-notice" role="status">
-                <?= counselor_escape($dashboard_notice) ?>
-            </div>
-        <?php endif; ?>
-
-        <footer class="page-footer">
-            <span>PTC Wellness · Counselor Portal</span>
-            <span>Confidential student information — handle with care.</span>
-        </footer>
-
-    </main>
+<body class="counselor-page dashboard-page">
+<?php include __DIR__ . '/../includes/counselor/sidebar.php'; ?>
+<div class="counselor-workspace">
+<?php include __DIR__ . '/../includes/counselor/topbar.php'; ?>
+<main class="main-content">
+
+<header class="page-header dashboard-hero">
+  <div class="page-heading">
+    <p class="eyebrow">PTC WELLNESS · GUIDANCE OFFICE</p>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Welcome back, <?= counselor_escape($counselor_name) ?>. Overview of assessments, cases, and referrals.</p>
+  </div>
+  <div class="header-right">
+    <div class="datetime-card">
+      <div class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg></span><span id="current-date">Loading date...</span></div>
+      <span class="datetime-divider"></span>
+      <div class="datetime-item"><span class="datetime-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span id="current-time">Loading time...</span></div>
+    </div>
+  </div>
+</header>
+
+<section class="metric-grid" aria-label="Live assessment summary">
+  <article class="metric-card metric-pending"><div class="metric-top"><div class="metric-label">Pending Assessments</div><span class="metric-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5h6M8 10h8M8 14h8"/></svg></span></div><div class="metric-value"><?= number_format($pending_assessments) ?></div><div class="metric-hint">Awaiting counselor review</div></article>
+  <article class="metric-card metric-monitoring"><div class="metric-top"><div class="metric-label">Under Monitoring</div><span class="metric-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 12h4l3-7 5 14 3-7h5"/></svg></span></div><div class="metric-value"><?= number_format($monitoring_assessments) ?></div><div class="metric-hint">Current monitoring status</div></article>
+  <article class="metric-card metric-referrals"><div class="metric-top"><div class="metric-label">Active Referrals</div><span class="metric-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10M5 5v14h14"/></svg></span></div><div class="metric-value"><?= number_format($active_referrals) ?></div><div class="metric-hint">Pending or accepted referrals</div></article>
+  <article class="metric-card metric-total"><div class="metric-top"><div class="metric-label">Total Assessments</div><span class="metric-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 13 9 18 20 6"/></svg></span></div><div class="metric-value"><?= number_format($total_assessments) ?></div><div class="metric-hint">All submitted assessments</div></article>
+</section>
+
+<div class="dashboard-analysis-grid">
+<section class="system-panel trend-panel" aria-label="Assessment submissions in the last 30 days">
+ <div class="section-heading"><div><h2>Assessment Trend</h2><p class="section-description">Assessments submitted in the last 30 days.</p></div><span class="section-heading-icon" aria-hidden="true">▥</span></div>
+ <div class="trend-chart">
+  <svg role="img" aria-label="Five periods of six days. Submission counts: <?= counselor_escape(implode(', ', $trend_values)) ?>" viewBox="0 0 490 205" preserveAspectRatio="xMidYMid meet">
+   <defs><linearGradient id="trendFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#65bd7d" stop-opacity=".30"/><stop offset="1" stop-color="#65bd7d" stop-opacity=".02"/></linearGradient></defs>
+   <?php foreach ([33,73,113,153] as $y): ?><line x1="35" y1="<?= $y ?>" x2="455" y2="<?= $y ?>" class="trend-grid-line"/><?php endforeach; ?>
+   <polygon points="<?= counselor_escape($svg_fill) ?>" fill="url(#trendFill)"/>
+   <polyline points="<?= counselor_escape($svg_points) ?>" class="trend-line"/>
+   <?php foreach ($trend_points as $i=>$p): ?><circle cx="<?= $p[0] ?>" cy="<?= $p[1] ?>" r="5" class="trend-point"><title><?= counselor_escape($trend_labels[$i]) ?>: <?= (int)$trend_values[$i] ?> submissions</title></circle><?php endforeach; ?>
+   <?php foreach ($trend_labels as $i=>$label): ?><text x="<?= 35+$i*105 ?>" y="187" class="trend-tick" text-anchor="middle"><?= counselor_escape($label) ?></text><?php endforeach; ?>
+  </svg>
+ </div>
+ <p class="trend-chart-note">Live data from assessment submissions · grouped into five 6-day periods</p>
+</section>
+<section class="system-panel workflow-panel">
+ <div class="section-heading"><div><h2>Assessment Workflow</h2><p class="section-description">Status of submitted assessments and next steps.</p></div></div>
+ <div class="workflow-status-list">
+  <a href="assessment_queue.php" class="workflow-status-row status-pending"><span class="workflow-status-icon" aria-hidden="true">▤</span><span><strong>Pending Review</strong><small>Newly submitted assessments for evaluation</small></span><b><?= number_format($pending_assessments) ?></b></a>
+  <a href="assessment_history.php" class="workflow-status-row status-reviewed"><span class="workflow-status-icon" aria-hidden="true">✓</span><span><strong>Reviewed</strong><small>Assessments marked as reviewed</small></span><b><?= number_format($reviewed_assessments) ?></b></a>
+  <a href="monitoring.php" class="workflow-status-row status-monitoring"><span class="workflow-status-icon" aria-hidden="true">⌁</span><span><strong>Under Monitoring</strong><small>Cases under monitoring</small></span><b><?= number_format($monitoring_assessments) ?></b></a>
+  <a href="referral.php" class="workflow-status-row status-referred"><span class="workflow-status-icon" aria-hidden="true">↗</span><span><strong>Referred</strong><small>Assessments marked as referred</small></span><b><?= number_format($referred_assessments) ?></b></a>
+ </div>
+ <p class="workflow-privacy-caption">Status indicates workflow progress—not a clinical diagnosis.</p>
+</section>
 </div>
 
-
-<script>
-(function () {
-    const dateElement = document.getElementById('current-date');
-    const timeElement = document.getElementById('current-time');
-
-    if (!dateElement || !timeElement) return;
-
-    const dateFormatter = new Intl.DateTimeFormat('en-PH', {
-        timeZone: 'Asia/Manila',
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-    });
-
-    const timeFormatter = new Intl.DateTimeFormat('en-PH', {
-        timeZone: 'Asia/Manila',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    });
-
-    function updateDateTime() {
-        const now = new Date();
-
-        dateElement.textContent = dateFormatter.format(now);
-        timeElement.textContent = timeFormatter.format(now);
-    }
-
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-})();
-</script>
-
-<div class="logout-modal" id="logout-modal" aria-hidden="true">
-    <section class="logout-dialog"
-             role="dialog"
-             aria-modal="true"
-             aria-labelledby="logout-title"
-             aria-describedby="logout-description">
-
-        <div class="logout-modal-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-                <path d="M10 17l5-5-5-5"></path>
-                <path d="M15 12H3"></path>
-                <path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"></path>
-            </svg>
-        </div>
-
-        <h2 id="logout-title">Are you sure you want to log out?</h2>
-
-        <p id="logout-description">
-            You may lose any unsaved changes. Please make sure
-            you've saved your work before leaving.
-        </p>
-
-        <div class="logout-actions">
-            <button type="button"
-                    class="logout-confirm"
-                    id="confirm-logout">
-                Yes, Log Out
-            </button>
-
-            <button type="button"
-                    class="logout-cancel"
-                    id="cancel-logout">
-                Go Back
-            </button>
-        </div>
-    </section>
+<div class="dashboard-detail-grid">
+<section class="system-panel recent-panel">
+ <div class="section-heading"><div><h2>Recent Assessments</h2><p class="section-description">Latest submissions in the system.</p></div><a class="section-link" href="assessment_history.php">View All →</a></div>
+ <div class="events-table-wrap"><table class="events-table"><thead><tr><th>Student</th><th>Assessment ID</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody>
+ <?php if ($recent_assessments): ?><?php foreach ($recent_assessments as $item):
+  $student_name=trim((string)($item['student_name']??'')); if ($student_name==='') $student_name='Student';
+  $aid=(int)$item['assessment_id']; $status=trim((string)($item['review_status']??'Pending'));
+  $date=$item['submitted_date'] ? date('M d, Y',strtotime($item['submitted_date'])):'—';
+  $status_key=strtolower($status);
+  $reviewDate=$status_key==='reviewed' && !empty($item['review_date']) ? date('M d, Y',strtotime($item['review_date'])) : '';
+ ?>
+ <tr><td><div class="dashboard-student"><span class="dashboard-student-avatar" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span class="dashboard-student-details"><span class="dashboard-student-name"><?= counselor_escape($student_name) ?></span><span class="dashboard-student-id">Assessment #<?= $aid ?></span></span></div></td><td>#<?= $aid ?></td><td><?= counselor_escape($date) ?><?php if ($reviewDate): ?><small class="assessment-reviewed-date">Reviewed: <?= counselor_escape($reviewDate) ?></small><?php endif; ?></td><td><span class="review-badge review-badge-<?= in_array($status_key,['pending','reviewed','monitoring','referred'],true)?$status_key:'pending' ?>"><?= counselor_escape($status) ?></span></td><td><a class="table-action" href="view_assessment.php?id=<?= $aid ?>">View →</a></td></tr>
+ <?php endforeach; ?><?php else: ?><tr><td colspan="5" class="empty-state">No assessment records yet.</td></tr><?php endif; ?>
+ </tbody></table></div>
+</section>
+<section class="system-panel activity-panel">
+ <div class="section-heading"><div><h2>Recent Activities</h2><p class="section-description">Latest recorded counselor system events.</p></div></div>
+ <div class="activity-list">
+ <?php if ($recent_activities): ?><?php foreach ($recent_activities as $activity): ?>
+ <div class="activity-row"><span class="activity-icon" aria-hidden="true">◷</span><span><strong><?= counselor_escape(dashboard_activity_label($activity['event_type'])) ?></strong><small><?= counselor_escape(date('M d, Y · g:i A',strtotime($activity['created_at']))) ?></small></span></div>
+ <?php endforeach; ?><?php else: ?><p class="activity-empty">No recent recorded activities.</p><?php endif; ?>
+ </div>
+</section>
 </div>
+
+<section class="system-panel quick-panel">
+ <div class="section-heading"><div><h2>Quick Actions</h2><p class="section-description">Open common counselor tools.</p></div></div>
+ <div class="monitoring-grid">
+  <a class="monitoring-card action-card" href="assessment_queue.php"><span class="monitoring-symbol" aria-hidden="true">▤</span><span class="monitoring-copy"><h3>Review Queue</h3><p>Open submitted assessments</p></span><span class="action-arrow" aria-hidden="true">→</span></a>
+  <a class="monitoring-card action-card" href="monitoring.php"><span class="monitoring-symbol" aria-hidden="true">⌁</span><span class="monitoring-copy"><h3>View Monitoring</h3><p>Follow up active cases</p></span><span class="action-arrow" aria-hidden="true">→</span></a>
+  <a class="monitoring-card action-card" href="referral.php"><span class="monitoring-symbol" aria-hidden="true">↗</span><span class="monitoring-copy"><h3>Manage Referrals</h3><p>Access referral records</p></span><span class="action-arrow" aria-hidden="true">→</span></a>
+  <a class="monitoring-card action-card" href="assessment_history.php"><span class="monitoring-symbol" aria-hidden="true">◷</span><span class="monitoring-copy"><h3>Assessment History</h3><p>View previous submissions</p></span><span class="action-arrow" aria-hidden="true">→</span></a>
+ </div>
+</section>
+<?php if ($dashboard_notice): ?><div class="dashboard-notice" role="status"><?= counselor_escape($dashboard_notice) ?></div><?php endif; ?>
+</main>
+<?php include __DIR__ . '/../includes/counselor/footer.php'; ?>
+</div>
+
+<div class="logout-modal" id="logout-modal" aria-hidden="true"><section class="logout-dialog" role="dialog" aria-modal="true" aria-labelledby="logout-title" aria-describedby="logout-description"><div class="logout-modal-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 17l5-5-5-5M15 12H3M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7"/></svg></div><h2 id="logout-title">Are you sure you want to log out?</h2><p id="logout-description">You may lose any unsaved changes. Please make sure you've saved your work before leaving.</p><div class="logout-actions"><button type="button" class="logout-confirm" id="confirm-logout">Yes, Log Out</button><button type="button" class="logout-cancel" id="cancel-logout">Go Back</button></div></section></div>
 <script>
-(function () {
-    const modal = document.getElementById('logout-modal');
-    const cancelButton = document.getElementById('cancel-logout');
-    const confirmButton = document.getElementById('confirm-logout');
-    const logoutLink = document.querySelector('.nav-link.logout');
-    if (!modal || !cancelButton || !confirmButton || !logoutLink) return;
-
-    let previousFocus = null;
-
-    function openModal(event) {
-        event.preventDefault();
-        previousFocus = document.activeElement;
-        modal.classList.add('is-open');
-        modal.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
-        cancelButton.focus();
-    }
-
-    function closeModal() {
-        modal.classList.remove('is-open');
-        modal.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
-        if (previousFocus) previousFocus.focus();
-    }
-
-    logoutLink.addEventListener('click', openModal);
-    cancelButton.addEventListener('click', closeModal);
-
-    confirmButton.addEventListener('click', function () {
-        window.location.href = '../auth/logout.php?portal=counselor';
-    });
-
-    modal.addEventListener('click', function (event) {
-        if (event.target === modal) closeModal();
-    });
-
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && modal.classList.contains('is-open')) {
-            closeModal();
-        }
-    });
+(function(){
+  const dateEl=document.getElementById('current-date'), timeEl=document.getElementById('current-time');
+  if(!dateEl||!timeEl)return;
+  const dateFmt=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',weekday:'long',month:'short',day:'numeric',year:'numeric'});
+  const timeFmt=new Intl.DateTimeFormat('en-PH',{timeZone:'Asia/Manila',hour:'2-digit',minute:'2-digit',hour12:true});
+  function update(){const d=new Date();dateEl.textContent=dateFmt.format(d);timeEl.textContent=timeFmt.format(d);}
+  update();window.setInterval(update,1000);
+})();
+(function(){
+  const modal=document.getElementById('logout-modal'), cancel=document.getElementById('cancel-logout'),confirm=document.getElementById('confirm-logout'),link=document.querySelector('.counselor-logout-link');
+  if(!modal||!cancel||!confirm||!link)return;
+  let previous=null;
+  function close(){modal.classList.remove('is-open');modal.setAttribute('aria-hidden','true');document.body.style.overflow='';if(previous)previous.focus();}
+  link.addEventListener('click',e=>{e.preventDefault();previous=document.activeElement;modal.classList.add('is-open');modal.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';cancel.focus();});
+  cancel.addEventListener('click',close);
+  confirm.addEventListener('click',()=>{window.location.href='../auth/logout.php?portal=counselor';});
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('is-open'))close();});
+})();
+(function(){
+  const revisionUrl='dashboard_live_data.php';let lastRevision=null,checking=false;
+  async function getRevision(){const response=await fetch(revisionUrl+'?_='+Date.now(),{method:'GET',cache:'no-store',credentials:'same-origin',headers:{'Accept':'application/json'}});if(!response.ok)throw new Error('Dashboard revision check failed');const data=await response.json();if(!data||data.success!==true||typeof data.revision!=='string')throw new Error('Invalid dashboard revision response');return data.revision;}
+  async function refresh(){const refreshUrl=window.location.pathname+window.location.search+(window.location.search?'&':'?')+'_dashboard_refresh='+Date.now();const response=await fetch(refreshUrl,{method:'GET',cache:'no-store',credentials:'same-origin',headers:{'X-Requested-With':'XMLHttpRequest'}});if(!response.ok)throw new Error('Dashboard refresh failed');const parsed=new DOMParser().parseFromString(await response.text(),'text/html');for(const selector of ['.metric-grid','.dashboard-analysis-grid','.dashboard-detail-grid','.quick-panel','.dashboard-notice']){const current=document.querySelector(selector),updated=parsed.querySelector(selector);if(current&&updated)current.replaceWith(updated);else if(!current&&updated){const main=document.querySelector('.main-content');const footer=main?.querySelector('.page-footer');if(main){if(footer)footer.before(updated);else main.appendChild(updated);}}else if(current&&!updated)current.remove();}}
+  async function poll(){if(checking||document.visibilityState==='hidden')return;checking=true;try{const revision=await getRevision();if(lastRevision===null)lastRevision=revision;else if(revision!==lastRevision){await refresh();lastRevision=revision;}}catch(err){console.error('Dashboard synchronization:',err);}finally{checking=false;}}
+  poll();window.setInterval(poll,5000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')poll();});
 })();
 </script>
-
-<script>
-(function () {
-
-    const initialLatestId = <?= (int) $latest_assessment_id ?>;
-
-    let checking = false;
-    let newAssessmentDetected = false;
-
-    async function checkNewAssessments() {
-
-        if (
-            checking ||
-            newAssessmentDetected ||
-            document.hidden
-        ) {
-            return;
-        }
-
-        checking = true;
-
-        try {
-
-            const response = await fetch(
-                'check_new_assessments.php',
-                {
-                    method: 'GET',
-                    cache: 'no-store',
-                    credentials: 'same-origin',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Unable to check assessments.');
-            }
-
-            const data = await response.json();
-
-            if (
-                data.success &&
-                Number(data.latest_id) > initialLatestId
-            ) {
-                newAssessmentDetected = true;
-
-            }
-
-        } catch (error) {
-            console.error('Assessment update check failed:', error);
-
-        } finally {
-            checking = false;
-        }
-    }
-
-    setInterval(checkNewAssessments, 8000);
-
-})();
-
-
-(function () {
-    let lastAssessmentId = <?= (int) $latest_assessment_id ?>;
-    let checking = false;
-
-    async function checkForNewAssessments() {
-        if (checking || document.hidden) return;
-
-        checking = true;
-
-        try {
-            const response = await fetch(
-                'check_new_assessments.php',
-                {
-                    cache: 'no-store',
-                    credentials: 'same-origin'
-                }
-            );
-
-            if (!response.ok) return;
-
-            const data = await response.json();
-
-            if (
-                !data.success ||
-                Number(data.latest_id) <= lastAssessmentId
-            ) {
-                return;
-            }
-
-            // Get updated dashboard HTML without reloading this page.
-            const pageResponse = await fetch(window.location.href, {
-                cache: 'no-store',
-                credentials: 'same-origin'
-            });
-
-            if (!pageResponse.ok) return;
-
-            const html = await pageResponse.text();
-            const parser = new DOMParser();
-            const newPage = parser.parseFromString(html, 'text/html');
-
-            const currentPanel = document.querySelector('.recent-panel');
-            const updatedPanel = newPage.querySelector('.recent-panel');
-
-            if (currentPanel && updatedPanel) {
-                currentPanel.replaceWith(updatedPanel);
-                lastAssessmentId = Number(data.latest_id);
-            }
-
-        } catch (error) {
-            console.error('Live assessment update:', error);
-        } finally {
-            checking = false;
-        }
-    }
-
-    setInterval(checkForNewAssessments, 5000);
-})();
-
-
-</script>
-
-</body>
-</html>
-
-
-</body>
-</html>
+<script src="../assets/js/counselor/counselor-layout.js" defer></script>
+</body></html>

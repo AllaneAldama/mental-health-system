@@ -1,0 +1,95 @@
+/* PTC Wellness — Referral | Tablet/phone only. Shared shell is owned by counselor-layout.css. */
+@media(max-width:900px){
+ body.referral-page .main-content{max-width:100%;width:100%;min-width:0;padding:24px clamp(18px,3.5vw,32px) 32px}
+ body.referral-page .page-header{flex-direction:column;align-items:flex-start;justify-content:center;gap:15px;min-height:0;margin-bottom:17px;padding:26px;border-radius:23px}
+ body.referral-page .page-heading,body.referral-page .header-right{width:100%;min-width:0}
+ body.referral-page .page-title{font-size:clamp(1.85rem,4.2vw,2.4rem);line-height:1.17}
+ body.referral-page .referral-eyebrow{font-size:.7rem}
+ body.referral-page .referral-subtitle{font-size:.84rem;line-height:1.65}
+ body.referral-page .header-right{justify-content:flex-start}
+ body.referral-page .datetime-card{flex-wrap:wrap;min-height:40px;gap:9px;padding:10px 12px}
+ body.referral-page .datetime-item{font-size:.72rem}
+ body.referral-page .datetime-icon svg{width:19px;height:19px}
+ body.referral-page .datetime-divider{height:20px}
+ body.referral-page .referral-stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:17px}
+ body.referral-page .referral-stat{min-height:145px;padding:18px;border-radius:18px}
+ body.referral-page .referral-stat>span{font-size:.8rem}
+ body.referral-page .referral-stat>strong{font-size:2.2rem}
+ body.referral-page .referral-stat>small{font-size:.71rem}
+ body.referral-page .referral-panel{margin-bottom:17px;padding:22px;border-radius:21px}
+ body.referral-page .referral-panel h2{font-size:1.12rem}
+ body.referral-page .referral-section-description{font-size:.77rem}
+ body.referral-page .calendar-day{min-height:93px;padding:6px}
+ body.referral-page .calendar-weekday{font-size:.68rem;padding:9px 2px}
+ body.referral-page .calendar-event{padding:4px;font-size:.66rem}
+ body.referral-page .calendar-event-time{font-size:.61rem}
+ /* Record cards: no cramped two-column label/value arrangement. */
+ body.referral-page .referral-table-wrap {width:100%;min-width:0;overflow:visible;border:0;background:transparent;border-radius:0}
+ body.referral-page .referral-table {display:block;width:100%;min-width:0;table-layout:auto;background:transparent}
+ body.referral-page .referral-table thead {display:none}
+ body.referral-page .referral-table tbody {display:grid;gap:14px;width:100%}
+ body.referral-page .referral-table tbody tr {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px;width:100%;min-width:0;overflow:hidden;padding:0 14px 14px;border:1px solid #dfe9df;border-radius:17px;background:#fff;box-shadow:0 6px 16px rgba(23,69,39,.04)}
+ body.referral-page .referral-table tbody tr:hover {background:#fff}
+ body.referral-page .referral-table td {display:block;min-width:0;min-height:0;margin:0;padding:13px 0;border:0;border-bottom:1px solid #edf2ed;text-align:left;font-size:.80rem;line-height:1.55;overflow-wrap:anywhere;word-break:normal}
+ body.referral-page .referral-table td::before {display:block;content:attr(data-label);margin:0 0 6px;color:#738378;font-size:.70rem;font-weight:750;line-height:1.4;letter-spacing:.01em}
+ body.referral-page .referral-table td:first-child {grid-column:1/-1;order:0;margin:0 -14px 2px;padding:16px 14px;background:linear-gradient(105deg,#edf7ec,#f9fcf8);border-bottom:1px solid #e1ebe1}
+ body.referral-page .referral-table td:first-child::before {display:none}
+ body.referral-page .referral-table .student-name {font-size:.94rem}
+ body.referral-page .referral-table td:nth-child(2) {grid-column:1;order:1}
+ body.referral-page .referral-table td:nth-child(3) {grid-column:2;order:2;text-align:center}
+ body.referral-page .referral-table td:nth-child(4) {grid-column:1/-1;order:3}
+ body.referral-page .referral-table td:nth-child(5) {grid-column:1/-1;order:4}
+ body.referral-page .referral-table td:nth-child(6) {grid-column:1/-1;order:5;padding:15px 0 0;border:0}
+ body.referral-page .referral-table td:last-child::before {display:none}
+ body.referral-page .referral-table td :is(strong,small,span,a) {max-width:100%}
+ body.referral-page .referral-table .student-detail {display:block;grid-column:auto;margin:5px 0 0;overflow-wrap:anywhere}
+ body.referral-page .referral-table .status-badge {width:fit-content;max-width:100%;white-space:normal}
+ body.referral-page .referral-actions {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;min-width:0}
+ body.referral-page .referral-actions .referral-button {width:100%;min-width:0;min-height:44px;padding:8px 9px;font-size:.74rem;line-height:1.4;white-space:normal}
+ body.referral-page .referral-actions .referral-button:only-child {grid-column:1/-1}
+ body.referral-page .referral-empty-cell{display:block!important}
+ body.referral-page .referral-empty-cell::before{display:none}
+ body.referral-page .referral-modal-card,body.referral-page .appointment-details-card{max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
+}
+@media(max-width:600px){
+ body.referral-page .main-content{padding:17px 13px 27px}
+ body.referral-page .page-header{padding:21px 18px;border-radius:19px}
+ body.referral-page .page-title{font-size:clamp(1.75rem,7vw,2rem)}
+ body.referral-page .datetime-card{max-width:100%;width:100%;justify-content:space-between;gap:7px;padding:10px}
+ body.referral-page .datetime-item{font-size:.67rem;gap:5px}
+ body.referral-page .datetime-icon{width:17px;height:17px;flex-basis:17px}
+ body.referral-page .datetime-icon svg{width:17px;height:17px}
+ body.referral-page .referral-stat{min-height:136px;padding:15px}
+ body.referral-page .referral-stat>span{font-size:.76rem}
+ body.referral-page .referral-stat>strong{font-size:2rem}
+ body.referral-page .referral-stat>small{font-size:.68rem}
+ body.referral-page .referral-panel{padding:16px;border-radius:18px}
+ body.referral-page .referral-panel-heading{gap:6px 12px}
+ body.referral-page .calendar-toolbar{flex-direction:column;align-items:stretch}
+ body.referral-page .calendar-navigation{justify-content:space-between;gap:5px}
+ body.referral-page .calendar-navigation strong{min-width:0;font-size:.76rem}
+ body.referral-page .calendar-nav-btn{min-width:33px;min-height:33px;padding:5px 8px}
+ body.referral-page .calendar-weekday{font-size:.57rem;padding:8px 1px;letter-spacing:0}
+ body.referral-page .calendar-day{min-height:66px;padding:3px}
+ body.referral-page .calendar-day-number{width:22px;height:22px;margin-bottom:2px;font-size:.65rem}
+ /* Seven-day calendar stays 7 columns: small appointment dots open the existing details modal. */
+ body.referral-page #referral-calendar .calendar-event{display:flex;align-items:center;justify-content:center;min-height:22px;padding:2px 3px;margin:3px 0;line-height:0;font-size:0;border:1px solid #d3e9d5;border-radius:7px;background:#dff0e2;white-space:nowrap;overflow:hidden}
+ body.referral-page #referral-calendar .calendar-event span{display:none!important}
+ body.referral-page #referral-calendar .calendar-event::before{content:"•";font-size:17px;line-height:1;color:#27784b}
+ body.referral-page .calendar-mobile-hint{display:block}
+ body.referral-page .calendar-event-time{font-size:.56rem}
+ body.referral-page .calendar-event-location{display:none}
+ body.referral-page .referral-modal{padding:10px}
+ body.referral-page .referral-modal-card,body.referral-page .appointment-details-card{width:100%;max-height:calc(100dvh - 20px);padding:18px;border-radius:16px}
+ body.referral-page .referral-detail-list,body.referral-page .appointment-details-body{grid-template-columns:1fr;gap:9px}
+ body.referral-page .referral-detail-item.full{grid-column:auto}
+ body.referral-page .referral-modal-actions .referral-button,body.referral-page .appointment-details-actions .referral-button{flex:1}
+ body.referral-page .success-modal-card{max-width:100%;padding:26px 20px}
+ body.referral-page .logout-dialog{max-width:100%;padding:28px 20px}
+}
+@media(max-width:360px){
+ body.referral-page .referral-stats{gap:9px}
+ body.referral-page .referral-stat{padding:12px}
+ body.referral-page .datetime-card{flex-wrap:wrap}
+ body.referral-page .datetime-divider{display:none}
+}

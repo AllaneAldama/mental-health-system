@@ -1,0 +1,777 @@
+/* =====================================================================
+   PTC WELLNESS | ASSESSMENT QUEUE — DASHBOARD PARITY v6
+   Designed for assessment_queue.php with counselor-base.css and
+   counselor-layout.css loaded first. No Dashboard CSS dependency.
+   This stylesheet is loaded ONLY by assessment_queue.php, so it's scoped
+   to body.counselor-page rather than relying on an optional queue-page class.
+   Desktop and mobile use the same design language as the Dashboard.
+   ===================================================================== */
+
+body.counselor-page {
+  --queue-green: #267447;
+  --queue-green-dark: #185b37;
+  --queue-ink: #173925;
+  --queue-text: #294739;
+  --queue-muted: #708274;
+  --queue-line: #dfe9df;
+  --queue-page: #f3f8f2;
+  --queue-shadow: 0 7px 20px rgba(23,69,39,.045);
+  background: var(--queue-page);
+  color: var(--queue-text);
+}
+body.counselor-page .main-content,
+body.counselor-page .main-content *,
+body.counselor-page .main-content *::before,
+body.counselor-page .main-content *::after { box-sizing: border-box; }
+body.counselor-page .main-content {
+  width: 100%;
+    max-width: 1450px;
+    min-width: 0;
+  margin: 0 auto;
+    padding: clamp(17px,2.35vw,34px);
+}
+/* Shared sidebar/topbar are supplied by includes/counselor. */
+body.counselor-page .queue-legacy-sidebar { display: none !important; }
+
+/* =========================== HERO =========================== */
+/* Match the Dashboard's hero, date/time capsule and SVG dimensions. */
+body.counselor-page .page-header {
+  position: relative;
+    display: flex;
+    align-items: center;
+  justify-content: space-between;
+    gap: 20px;
+  min-height: 146px;
+    margin: 0 0 19px;
+  padding: clamp(24px,3vw,35px);
+    overflow: hidden;
+  border: 1px solid #e1ecdf;
+    border-radius: 19px;
+  background: linear-gradient(115deg,#f8fcf5 0%,#eaf4e9 68%,#deeedc 100%);
+  box-shadow: 0 7px 20px rgba(23,69,39,.03);
+}
+body.counselor-page .page-header::before,
+body.counselor-page .page-header::after {
+  position: absolute;
+    content: '';
+    pointer-events: none;
+  border-radius: 50%;
+}
+body.counselor-page .page-header::before {
+  width: 250px;
+    height: 160px;
+    right: -45px;
+    bottom: -95px;
+  background: rgba(136,188,129,.18);
+    transform: rotate(-15deg);
+}
+body.counselor-page .page-header::after {
+  width: 240px;
+    height: 155px;
+    right: 70px;
+    bottom: -105px;
+  background: rgba(172,211,164,.16);
+    transform: rotate(15deg);
+}
+body.counselor-page .page-header > * { position: relative;
+    z-index: 1; }
+body.counselor-page .page-heading { min-width: 0; }
+body.counselor-page .eyebrow {
+  margin: 0 0 7px;
+    color: #3e7950;
+    font-size: .735rem;
+  font-weight: 800;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+}
+body.counselor-page .page-title {
+  margin: 2px 0 7px;
+    color: var(--queue-ink);
+  font-size: clamp(2.2rem, 2.85vw, 2.8rem);
+    font-weight: 800;
+  line-height: 1.15;
+    letter-spacing: -.055em;
+    overflow-wrap: normal;
+}
+body.counselor-page .page-subtitle {
+  margin: 0;
+    color: #526a56;
+    font-size: .91rem;
+    line-height: 1.65;
+}
+body.counselor-page .header-right {
+  display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+  justify-content: flex-end;
+    min-width: 0;
+}
+body.counselor-page .datetime-card {
+  display: inline-flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+  align-items: center;
+    justify-content: center;
+    gap: 11px;
+  width: max-content;
+    max-width: 100%;
+    min-height: 40px;
+  padding: 10px 12px;
+    border: 1px solid #e2ebe0;
+  border-radius: 13px;
+    background: #fff;
+    color: #3d5a45;
+  box-shadow: 0 5px 13px rgba(24,58,31,.05);
+}
+body.counselor-page .datetime-item {
+  display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+  font-size: .8rem;
+    font-weight: 600;
+    line-height: 1.35;
+  white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+body.counselor-page .datetime-icon {
+  display: inline-flex;
+    flex: 0 0 20px;
+    align-items: center;
+  justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: #2a6e46;
+}
+body.counselor-page .datetime-icon svg {
+  display: block;
+    width: 19px;
+    height: 19px;
+  fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+  stroke-linecap: round;
+    stroke-linejoin: round;
+}
+body.counselor-page .datetime-divider {
+  display: block;
+    flex: 0 0 1px;
+    width: 1px;
+    height: 23px;
+  background: #e2e9de;
+}
+body.counselor-page .page-header .header-status { display: none; }
+
+/* ========================= METRICS ========================= */
+body.counselor-page .queue-summary-grid {
+  display: grid;
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 14px;
+    width: 100%;
+    margin: 0 0 19px;
+}
+body.counselor-page .queue-summary-card {
+  position: relative;
+    min-width: 0;
+    min-height: 157px;
+  padding: 22px;
+    overflow: hidden;
+  border: 1px solid #dbeade;
+    border-radius: 17px;
+  background: linear-gradient(130deg,#eef8f1,#e4f2e8);
+  box-shadow: var(--queue-shadow);
+}
+body.counselor-page .queue-summary-card.summary-pending {
+  background: linear-gradient(130deg,#fff9ec,#fff0d7);
+    border-color: #f2e7cd;
+}
+body.counselor-page .queue-summary-card.summary-reviewed {
+  background: linear-gradient(130deg,#f2f7ff,#e5effb);
+    border-color: #dde7f2;
+}
+body.counselor-page .summary-label {
+  display: block;
+    max-width: calc(100% - 48px);
+  color: #344d39;
+    font-size: .88rem;
+    font-weight: 700;
+}
+body.counselor-page .queue-summary-card > strong {
+  display: block;
+    margin: 13px 0 7px;
+    color: #123c28;
+  font-size: clamp(2.55rem, 3vw, 3rem);
+    font-weight: 800;
+    line-height: 1.12;
+  font-variant-numeric: tabular-nums;
+}
+body.counselor-page .summary-caption {
+  display: block;
+    color: #6b796e;
+    font-size: .75rem;
+    line-height: 1.4;
+}
+body.counselor-page .summary-symbol {
+  position: absolute;
+    top: 20px;
+    right: 20px;
+  display: grid;
+    place-items: center;
+  width: 43px;
+    height: 43px;
+    border-radius: 50%;
+  background: rgba(255,255,255,.5);
+    color: #2a7547;
+}
+body.counselor-page .summary-pending .summary-symbol { color: #a9760e; }
+body.counselor-page .summary-reviewed .summary-symbol { color: #317b59; }
+body.counselor-page .summary-symbol svg {
+  width: 21px;
+    height: 21px;
+    fill: none;
+    stroke: currentColor;
+  stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ===================== PANELS / HEADINGS ===================== */
+body.counselor-page .queue-panel {
+  width: 100%;
+    min-width: 0;
+    margin: 0;
+  padding: 0;
+    border: 0;
+    background: transparent;
+  box-shadow: none;
+    overflow: visible;
+}
+body.counselor-page .queue-controls,
+body.counselor-page .queue-records {
+  min-width: 0;
+    width: 100%;
+  padding: 22px;
+  border: 1px solid var(--queue-line);
+    border-radius: 17px;
+  background: #fff;
+    box-shadow: var(--queue-shadow);
+}
+body.counselor-page .queue-controls { margin-bottom: 17px; }
+body.counselor-page .queue-panel-heading,
+body.counselor-page .queue-records-heading {
+  display: flex;
+    align-items: center;
+    justify-content: space-between;
+  gap: 14px;
+    margin-bottom: 16px;
+}
+body.counselor-page .queue-panel-heading h2,
+body.counselor-page .queue-records-heading h2 {
+  margin: 0;
+    color: var(--queue-ink);
+  font-size: 1.2rem;
+    line-height: 1.4;
+  font-weight: 800;
+    letter-spacing: -.025em;
+}
+body.counselor-page .queue-panel-heading p,
+body.counselor-page .queue-records-heading p {
+  margin: 4px 0 0;
+    color: var(--queue-muted);
+  font-size: .86rem;
+    line-height: 1.6;
+}
+body.counselor-page .queue-record-count {
+  flex: 0 0 auto;
+    color: #677e6d;
+    font-size: .8rem;
+    white-space: nowrap;
+}
+
+/* ====================== SEARCH / FILTERS ====================== */
+body.counselor-page .queue-filters {
+  display: grid;
+  grid-template-columns: minmax(210px,1.8fr) repeat(3,minmax(110px,1fr)) auto auto;
+  align-items: center;
+    gap: 9px;
+    width: 100%;
+    margin: 0 0 13px;
+}
+body.counselor-page .queue-search {
+  display: flex;
+    align-items: center;
+    gap: 10px;
+  width: 100%;
+    min-width: 0;
+    height: 45px;
+    padding: 0 12px;
+  border: 1px solid #d8e4da;
+    border-radius: 10px;
+    background: #fff;
+}
+body.counselor-page .queue-search svg {
+  flex: 0 0 17px;
+    width: 17px;
+    height: 17px;
+  fill: none;
+    stroke: #718a75;
+    stroke-width: 1.8;
+  stroke-linecap: round;
+    stroke-linejoin: round;
+}
+body.counselor-page .queue-search input {
+  width: 100%;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+  border: 0;
+    outline: 0;
+    background: transparent;
+  color: var(--queue-text);
+    font: inherit;
+    font-size: .79rem;
+}
+body.counselor-page .queue-search input:focus { box-shadow: none; }
+body.counselor-page .queue-search:focus-within,
+body.counselor-page .filter-select select:focus-visible {
+  border-color: #80a887;
+    outline: 0;
+  box-shadow: 0 0 0 3px rgba(71,125,83,.12);
+}
+body.counselor-page .filter-select { display: block;
+    min-width: 0;
+    width: 100%; }
+body.counselor-page .filter-select select {
+  display: block;
+    width: 100%;
+    min-width: 0;
+    height: 45px;
+  padding: 0 25px 0 11px;
+    border: 1px solid #d8e4da;
+  border-radius: 10px;
+    background-color: #fff;
+  color: #344e42;
+    font: inherit;
+    font-size: .79rem;
+}
+body.counselor-page .queue-search-button,
+body.counselor-page .queue-reset-button {
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  min-height: 45px;
+    padding: 0 13px;
+  border: 1px solid transparent;
+    border-radius: 10px;
+  font: inherit;
+    font-size: .78rem;
+    font-weight: 700;
+  line-height: 1.3;
+    text-align: center;
+    text-decoration: none;
+  white-space: nowrap;
+    cursor: pointer;
+  transition: background-color .18s ease, transform .18s ease;
+}
+body.counselor-page .queue-search-button { background: #226d43;
+    color: #fff; }
+body.counselor-page .queue-search-button:hover { background: #155634; }
+body.counselor-page .queue-reset-button {
+  border-color: #bcd6c3;
+    background: #fff;
+    color: #205c39;
+}
+body.counselor-page .queue-reset-button:hover { background: #f2f8f2; }
+body.counselor-page .queue-search-button:focus-visible,
+body.counselor-page .queue-reset-button:focus-visible,
+body.counselor-page .queue-view-button:focus-visible {
+  outline: 3px solid rgba(71,125,83,.3);
+    outline-offset: 2px;
+}
+body.counselor-page .priority-legend {
+  display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+  gap: 7px 18px;
+    margin: 0;
+    padding: 10px 12px;
+  border: 1px solid #e5eee5;
+    border-radius: 10px;
+  background: #f7faf7;
+    color: #63766a;
+  font-size: .75rem;
+    line-height: 1.6;
+}
+body.counselor-page .priority-legend b { color: var(--queue-ink);
+    font-weight: 800; }
+
+/* ======================= RECORD TABLE ======================= */
+body.counselor-page .queue-table-wrap {
+  width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  overflow-x: auto;
+    overflow-y: hidden;
+  border: 1px solid #e5ede4;
+    border-radius: 11px;
+  background: #fff;
+    scrollbar-width: thin;
+  scrollbar-color: #c7d8c5 transparent;
+  -webkit-overflow-scrolling: touch;
+}
+body.counselor-page .queue-table {
+  width: 100%;
+    min-width: 980px;
+    margin: 0;
+  border-collapse: separate;
+    border-spacing: 0;
+  table-layout: fixed;
+    background: #fff;
+}
+/* The PHP contains eight <col> elements; these sum to exactly 100%. */
+body.counselor-page .queue-table col.col-student { width: 17%; }
+body.counselor-page .queue-table col.col-assessment { width: 9%; }
+body.counselor-page .queue-table col.col-date { width: 13%; }
+body.counselor-page .queue-table col.col-status { width: 12%; }
+body.counselor-page .queue-table col.col-referral { width: 12%; }
+body.counselor-page .queue-table col.col-schedule { width: 12%; }
+body.counselor-page .queue-table col.col-priority { width: 11%; }
+body.counselor-page .queue-table col.col-action { width: 14%; }
+body.counselor-page .queue-table th,
+body.counselor-page .queue-table td {
+  padding: 13px 9px;
+    vertical-align: middle;
+  border-bottom: 1px solid #e9efe6;
+    text-align: center;
+
+  font-size: .89rem;}
+body.counselor-page .queue-table th {
+  height: 49px;
+    background: #eaf4eb;
+    color: #315943;
+  font-size: .83rem;
+    font-weight: 800;
+    letter-spacing: .015em;
+  line-height: 1.4;
+    text-transform: uppercase;
+  white-space: normal;
+    overflow-wrap: normal;
+}
+body.counselor-page .queue-table td {
+  height: 76px;
+    color: #2a4739;
+    font-size: .78rem;
+    line-height: 1.5;
+}
+body.counselor-page .queue-table th:first-child,
+body.counselor-page .queue-table td:first-child { padding-left: 14px;
+    text-align: left; }
+body.counselor-page .queue-table th.center-cell,
+body.counselor-page .queue-table td.center-cell { text-align: center; }
+body.counselor-page .queue-table tbody tr:last-child td { border-bottom: 0; }
+body.counselor-page .queue-table tbody tr { transition: background-color .15s ease; }
+body.counselor-page .queue-table tbody tr:hover { background: #fbfdf9; }
+body.counselor-page .queue-student {
+  display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+}
+body.counselor-page .queue-avatar {
+  display: inline-flex;
+    flex: 0 0 35px;
+    align-items: center;
+  justify-content: center;
+    width: 35px;
+    height: 35px;
+  border: 0;
+    border-radius: 50%;
+  background: linear-gradient(140deg,#418956,#1d5f3a);
+  color: #fff;
+    font-size: .79rem;
+    font-weight: 800;
+}
+body.counselor-page .queue-student-name {
+  display: block;
+    min-width: 0;
+    overflow: hidden;
+  color: #193c30;
+    font-size: .96rem;
+    font-weight: 700;
+  text-overflow: ellipsis;
+    white-space: nowrap;
+}
+body.counselor-page .assessment-id {
+  display: inline-block;
+    color: #557365;
+    font-size: .8rem;
+  font-weight: 800;
+    white-space: nowrap;
+}
+body.counselor-page .submitted-date,
+body.counselor-page .submitted-time { display: block;
+    white-space: nowrap; }
+body.counselor-page .submitted-date {
+  color: #29483a;
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1.5;
+}
+body.counselor-page .submitted-time {
+  margin-top: 2px;
+    color: #829087;
+    font-size: .72rem;
+    line-height: 1.4;
+}
+body.counselor-page .queue-status {
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  gap: 5px;
+    max-width: 100%;
+    min-height: 29px;
+  padding: 6px 9px;
+    border-radius: 999px;
+  font-size: .7rem;
+    font-weight: 700;
+    line-height: 1.3;
+  text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+body.counselor-page .queue-status-dot {
+  flex: 0 0 6px;
+    width: 6px;
+    height: 6px;
+  border-radius: 50%;
+    background: currentColor;
+}
+body.counselor-page .queue-status-reviewed { background: #e9f5e7;
+    color: #2f7950; }
+body.counselor-page .queue-status-pending { background: #fff3df;
+    color: #a66b12; }
+body.counselor-page .queue-status-referral,
+body.counselor-page .queue-status-referred { background: #f0e9fb;
+    color: #7552b1; }
+body.counselor-page .queue-priority-cell {
+  display: flex;
+    flex-direction: column;
+    align-items: center;
+  justify-content: center;
+    gap: 4px;
+    min-width: 0;
+}
+body.counselor-page .priority-badge {
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  max-width: 100%;
+    min-height: 29px;
+    padding: 6px 9px;
+  border: 1px solid transparent;
+    border-radius: 999px;
+  font-size: .7rem;
+    font-weight: 800;
+    line-height: 1.3;
+  text-align: center;
+    white-space: normal;
+}
+body.counselor-page .priority-low { border-color: #cfe5ce;
+    background: #eaf6e8;
+    color: #287443; }
+body.counselor-page .priority-moderate { border-color: #f1dfb6;
+    background: #fff5df;
+    color: #94610b; }
+body.counselor-page .priority-high { border-color: #f0caca;
+    background: #fff0ed;
+    color: #b43d32; }
+body.counselor-page .priority-unrated { border-color: #dfe5df;
+    background: #f1f3f0;
+    color: #68766d; }
+body.counselor-page .priority-average {
+  color: #71847c;
+    font-size: .68rem;
+    font-weight: 700;
+  line-height: 1.4;
+    white-space: nowrap;
+}
+body.counselor-page .queue-action-cell { white-space: normal; }
+body.counselor-page .queue-view-button {
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  gap: 6px;
+    max-width: 100%;
+    min-height: 38px;
+  padding: 8px 10px;
+    border: 0;
+    border-radius: 9px;
+  background: var(--queue-green);
+    color: #fff;
+  font: inherit;
+    font-size: .71rem;
+    font-weight: 700;
+  line-height: 1.35;
+    text-align: center;
+    text-decoration: none;
+  white-space: normal;
+    transition: background-color .18s ease,transform .18s ease;
+}
+body.counselor-page .queue-view-button:hover {
+  background: var(--queue-green-dark);
+    transform: translateY(-1px);
+}
+body.counselor-page .queue-table-footer {
+  display: flex;
+    align-items: center;
+    justify-content: space-between;
+  flex-wrap: wrap;
+    gap: 8px 18px;
+    padding: 14px 2px 0;
+  color: var(--queue-muted);
+    font-size: .76rem;
+    line-height: 1.6;
+}
+body.counselor-page .queue-privacy-note {
+  margin: 15px 2px 0;
+    color: var(--queue-muted);
+  font-size: .76rem;
+    line-height: 1.7;
+}
+
+/* ================== EMPTY / ERROR / FOOTER ================== */
+body.counselor-page .queue-alert,
+body.counselor-page .queue-empty-state {
+  padding: 30px 20px;
+    border: 1px solid var(--queue-line);
+  border-radius: 13px;
+    background: #fbfdf9;
+    text-align: center;
+}
+body.counselor-page .queue-alert { border-color: #f0d9b4;
+    background: #fffaf1; }
+body.counselor-page .queue-alert strong,
+body.counselor-page .queue-empty-state h3 {
+  display: block;
+    margin: 0 0 8px;
+    color: var(--queue-ink);
+  font-size: 1rem;
+    font-weight: 800;
+}
+body.counselor-page .queue-alert p,
+body.counselor-page .queue-empty-state p {
+  margin: 0;
+    color: var(--queue-muted);
+    font-size: .82rem;
+    line-height: 1.7;
+}
+body.counselor-page .queue-empty-icon {
+  display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  width: 46px;
+    height: 46px;
+    margin-bottom: 12px;
+  border-radius: 14px;
+    background: #edf5e9;
+    color: var(--queue-green);
+}
+body.counselor-page .queue-empty-icon svg {
+  width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+  stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+body.counselor-page .sr-only {
+  position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+  margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+  white-space: nowrap;
+    border: 0;
+}
+body.counselor-page .page-footer {
+  display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  gap: 8px 18px;
+    margin-top: 23px;
+    padding: 0 2px 24px;
+  color: var(--queue-muted);
+    font-size: .76rem;
+    line-height: 1.6;
+}
+
+/* ========================= RESPONSIVE ========================= */
+/* 900px: shared sidebar switches to the shared hamburger.
+   560px: actual eight-column table becomes labeled, tappable record cards. */
+@media (max-width: 1250px) and (min-width: 901px) {
+  body.counselor-page .queue-filters {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+  body.counselor-page .queue-search { grid-column: 1 / -1; }
+  body.counselor-page .queue-search-button,
+  body.counselor-page .queue-reset-button { width: 100%; }
+}
+
+
+/* Same 600px record-card switch as the supplied Dashboard. */
+
+
+@media (prefers-reduced-motion: reduce) {
+  body.counselor-page .queue-table tbody tr,
+  body.counselor-page .queue-search-button,
+  body.counselor-page .queue-reset-button,
+  body.counselor-page .queue-view-button { transition: none; }
+}
+
+/* ================================================================
+   PTC Queue — Gmail-inspired visual finish, desktop/default.
+   Eight fields, PHP forms, date/time dimensions and animations stay.
+   ================================================================ */
+body.counselor-page.queue-page {
+  --queue-green:#1b7a49;
+  --queue-green-dark:#0e5b35;
+  --queue-ink:#153d29;
+  --queue-shadow:0 7px 24px rgba(23,71,40,.045);
+  background:linear-gradient(145deg,#f9fcf9,#f3f8f3 65%,#fff);
+}
+body.counselor-page.queue-page .page-header {
+  border-color:#dceadc;
+  background:linear-gradient(110deg,#fcfffc 0%,#f0f8f0 62%,#dff2e4 100%);
+  box-shadow:0 7px 25px rgba(28,77,40,.045);
+}
+body.counselor-page.queue-page .queue-summary-card {
+  border-color:#e2ece5;
+  background:linear-gradient(135deg,#fff,#ecf8ef);
+  box-shadow:0 7px 20px rgba(25,67,38,.045);
+}
+body.counselor-page.queue-page .queue-summary-card.summary-pending {
+  background:linear-gradient(135deg,#fff,#fff3df); border-color:#f3e7d4;
+}
+body.counselor-page.queue-page .queue-summary-card.summary-reviewed {
+  background:linear-gradient(135deg,#fff,#eaf4ff); border-color:#dce8f3;
+}
+body.counselor-page.queue-page :is(.queue-controls,.queue-records) {
+  border-color:#e2ebe3;
+  background:#fff;
+  box-shadow:0 7px 24px rgba(21,66,39,.045);
+}
+body.counselor-page.queue-page .queue-table thead th {
+  background:#edf6ef;
+  color:#28553a;
+}
+body.counselor-page.queue-page .queue-search-button,
+body.counselor-page.queue-page .queue-view-button {
+  background:#1d7545;
+}
+body.counselor-page.queue-page .queue-search-button:hover,
+body.counselor-page.queue-page .queue-view-button:hover {
+  background:#0c5732;
+}

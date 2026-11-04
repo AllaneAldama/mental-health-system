@@ -1,0 +1,105 @@
+/* PTC Wellness | Assessment History — desktop/default page styles.
+   Sizing reference: Dashboard, Assessment Queue, Monitoring, Referral.
+   Shared sidebar, topbar, footer, notifications and workspace belong to counselor-layout.css.
+   Mobile-specific rules are in assessment-history-mobile.css. */
+body.history-page{--hist-ink:#173925;--hist-text:#294739;--hist-muted:#708274;--hist-line:#dfe9df;--hist-shadow:0 7px 20px rgba(23,69,39,.045);--hist-green:#267447;--hist-green-dark:#185b37;background:#f3f8f2;color:var(--hist-text)}
+body.history-page .main-content,body.history-page .main-content *,body.history-page .main-content *::before,body.history-page .main-content *::after{box-sizing:border-box}
+body.history-page .main-content{width:100%;max-width:1450px;min-width:0;margin:0 auto;padding:clamp(17px,2.35vw,34px)}
+/* Hero: same sizing as Assessment Queue (desktop min-height 146px). */
+body.history-page .page-header{position:relative;display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:146px;margin:0 0 19px;padding:clamp(24px,3vw,35px);border:1px solid #e1ecdf;border-radius:19px;background:linear-gradient(115deg,#f8fcf5 0%,#eaf4e9 68%,#deeedc 100%);box-shadow:0 7px 20px rgba(23,69,39,.03);overflow:hidden}
+body.history-page .page-header::before,body.history-page .page-header::after{position:absolute;content:"";pointer-events:none;border-radius:50%}
+body.history-page .page-header::before{width:250px;height:160px;right:-45px;bottom:-95px;background:rgba(136,188,129,.18);transform:rotate(-15deg)}
+body.history-page .page-header::after{width:240px;height:155px;right:70px;bottom:-105px;background:rgba(172,211,164,.16);transform:rotate(15deg)}
+body.history-page .page-header>*{position:relative;z-index:1}
+body.history-page .page-heading{min-width:0}
+body.history-page .history-eyebrow{margin:0 0 7px;color:#3e7950;font-size:.735rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+body.history-page .page-title{margin:2px 0 7px;color:var(--hist-ink);font-size:clamp(2.2rem,2.85vw,2.8rem);font-weight:800;line-height:1.15;letter-spacing:-.055em}
+body.history-page .history-subtitle{max-width:730px;margin:0;color:#526a56;font-size:.91rem;line-height:1.65}
+body.history-page .header-right{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;min-width:0}
+body.history-page .datetime-card{display:inline-flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:11px;width:max-content;max-width:100%;min-height:40px;padding:10px 12px;border:1px solid #e2ebe0;border-radius:13px;background:#fff;color:#3d5a45;box-shadow:0 5px 13px rgba(24,58,31,.05)}
+body.history-page .datetime-item{display:inline-flex;flex:0 0 auto;align-items:center;gap:6px;font-size:.8rem;font-weight:600;line-height:1.35;white-space:nowrap;font-variant-numeric:tabular-nums}
+body.history-page .datetime-icon{display:inline-flex;flex:0 0 20px;align-items:center;justify-content:center;width:20px;height:20px;color:#2a6e46}
+body.history-page .datetime-icon svg{display:block;width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body.history-page .datetime-divider{display:block;flex:0 0 1px;width:1px;height:23px;background:#e2e9de}
+/* Summary cards: four equal-width cards on wide desktops, unchanged counts/meanings. */
+body.history-page .history-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 19px}
+body.history-page .history-stat{position:relative;isolation:isolate;min-width:0;min-height:157px;padding:22px;overflow:hidden;border:1px solid #dbeade;border-radius:17px;background:linear-gradient(130deg,#eef8f1,#e4f2e8);box-shadow:var(--hist-shadow)}
+body.history-page .history-stat:nth-child(2){border-color:#f2e7cd;background:linear-gradient(130deg,#fff9ec,#fff0d7)}
+body.history-page .history-stat:nth-child(3){border-color:#dde7f2;background:linear-gradient(130deg,#f2f7ff,#e5effb)}
+body.history-page .history-stat:nth-child(4){border-color:#e3e8ee;background:linear-gradient(130deg,#fff,#f0f5f3)}
+body.history-page .history-stat::after{content:"";position:absolute;z-index:-1;top:-45px;right:-30px;width:105px;height:105px;border-radius:50%;background:rgba(255,255,255,.32);pointer-events:none}
+body.history-page .history-stat>span{display:block;max-width:calc(100% - 10px);color:#344d39;font-size:.88rem;font-weight:700;line-height:1.45}
+body.history-page .history-stat>strong{display:block;margin:13px 0 7px;color:#123c28;font-size:clamp(2.55rem,3vw,3rem);font-weight:800;line-height:1.12;font-variant-numeric:tabular-nums}
+body.history-page .history-stat>small{display:block;color:#6b796e;font-size:.75rem;line-height:1.4}
+/* Search and records panel uses the same Queue card radius/padding. */
+body.history-page .history-panel{min-width:0;margin:0 0 17px;padding:22px;border:1px solid var(--hist-line);border-radius:17px;background:#fff;box-shadow:var(--hist-shadow)}
+body.history-page .history-panel-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+body.history-page .history-panel-heading h2{margin:0;color:var(--hist-ink);font-size:1.2rem;line-height:1.4;font-weight:800;letter-spacing:-.025em}
+body.history-page .history-panel-heading p{margin:4px 0 0;color:var(--hist-muted);font-size:.86rem;line-height:1.6}
+body.history-page .history-record-count{flex:0 0 auto;padding:6px 10px;border:1px solid #e1eae0;border-radius:999px;background:#f7faf6;color:#677e6d;font-size:.78rem;font-weight:700}
+body.history-page .history-search{display:grid;grid-template-columns:minmax(200px,1fr) minmax(148px,205px) auto auto;align-items:center;gap:9px;margin:0 0 17px}
+body.history-page .history-search-field,body.history-page .history-filter-field{display:block;min-width:0}
+body.history-page .history-search input,body.history-page .history-search select{display:block;width:100%;min-width:0;height:45px;padding:0 12px;border:1px solid #d8e4da;border-radius:10px;outline:0;background:#fff;color:#344e42;font:inherit;font-size:.79rem}
+body.history-page .history-search input::placeholder{color:#8b9b8d}
+body.history-page .history-search input:focus-visible,body.history-page .history-search select:focus-visible{border-color:#80a887;box-shadow:0 0 0 3px rgba(71,125,83,.12)}
+body.history-page .history-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:45px;padding:8px 13px;border:1px solid transparent;border-radius:10px;background:#267447;color:#fff;font:inherit;font-size:.78rem;font-weight:700;line-height:1.3;text-align:center;text-decoration:none;white-space:nowrap;cursor:pointer;transition:background-color .18s ease,transform .18s ease}
+body.history-page .history-button:hover{background:#185b37;transform:translateY(-1px)}
+body.history-page .history-button.secondary{border-color:#bcd6c3;background:#fff;color:#205c39}
+body.history-page .history-button.secondary:hover{background:#f2f8f2}
+body.history-page .history-button.view{min-height:38px;padding:8px 11px;border-color:#cfe6d1;background:#eaf6ec;color:#22633d}
+body.history-page .history-button.view:hover{background:#d4edd9}
+body.history-page .history-button:focus-visible{outline:3px solid rgba(71,125,83,.3);outline-offset:2px}
+body.history-page .history-message{margin:12px 0;padding:13px 15px;border:1px solid #dce8dc;border-radius:11px;background:#f5faf5;color:#416648;font-size:.82rem;line-height:1.6}
+body.history-page .history-message.error{border-color:#f0d2ce;background:#fff2f0;color:#9e4038}
+body.history-page .history-empty{display:flex;flex-direction:column;align-items:center;gap:7px;padding:44px 18px;border:1px dashed #d9e4da;border-radius:13px;background:#fafcf9;text-align:center}
+body.history-page .history-empty-icon{display:grid;width:46px;height:46px;margin-bottom:5px;place-items:center;border-radius:50%;background:#edf5eb;color:#39764d}
+body.history-page .history-empty-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+body.history-page .history-empty strong{color:#39513d;font-size:.9rem}
+body.history-page .history-empty span{color:#879286;font-size:.77rem;line-height:1.6}
+/* Six-column records table, horizontally scrolls on narrower desktops only. */
+body.history-page .history-table-wrap{width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;border:1px solid #e5ede4;border-radius:11px;background:#fff;scrollbar-width:thin;scrollbar-color:#c7d8c5 transparent}
+body.history-page .history-table{width:100%;min-width:900px;margin:0;border-collapse:separate;border-spacing:0;table-layout:fixed}
+body.history-page .history-table th:nth-child(1){width:27%}body.history-page .history-table th:nth-child(2){width:12%}body.history-page .history-table th:nth-child(3){width:17%}body.history-page .history-table th:nth-child(4){width:21%}body.history-page .history-table th:nth-child(5){width:12%}body.history-page .history-table th:nth-child(6){width:11%}
+body.history-page .history-table th{height:49px;padding:13px 12px;background:#eaf4eb;color:#315943;font-size:.76rem;font-weight:800;letter-spacing:.015em;line-height:1.4;text-align:left;text-transform:uppercase}
+body.history-page .history-table td{padding:15px 12px;border-bottom:1px solid #e9efe6;color:#2a4739;font-size:.78rem;line-height:1.55;vertical-align:middle;overflow-wrap:anywhere}
+/* Table alignment only — consistent header/value alignment at desktop widths. */
+@media (min-width: 901px) {
+  body.history-page .history-table :is(th, td):nth-child(1) { text-align: left; }
+  body.history-page .history-table :is(th, td):nth-child(2),
+  body.history-page .history-table :is(th, td):nth-child(3),
+  body.history-page .history-table :is(th, td):nth-child(4),
+  body.history-page .history-table :is(th, td):nth-child(5),
+  body.history-page .history-table :is(th, td):nth-child(6) { text-align: center; }
+}
+body.history-page .history-table tbody tr:last-child td{border-bottom:0}
+body.history-page .history-table tbody tr:hover{background:#fbfdf9}
+body.history-page .history-student-name{display:block;color:#193c30;font-size:.9rem;font-weight:700;line-height:1.45}
+body.history-page .history-student-detail,body.history-page .history-student-number{display:block;margin-top:4px;color:#708477;font-size:.7rem;line-height:1.5;overflow-wrap:anywhere}
+body.history-page .history-id{font-size:.8rem;font-weight:800;color:#315b3b;white-space:nowrap}
+body.history-page .history-assessment-type{display:block;color:#4b5d4e}
+body.history-page .history-status{display:inline-flex;align-items:center;justify-content:center;min-height:29px;padding:6px 10px;border-radius:999px;font-size:.7rem;font-weight:800;line-height:1.3;white-space:nowrap}
+body.history-page .history-status.pending{background:#fff3df;color:#a66b12}
+body.history-page .history-status.reviewed{background:#e9f5e7;color:#2f7950}
+body.history-page .history-status.monitoring{background:#e8efff;color:#345b9b}
+body.history-page .history-status.referred{background:#f1e8fb;color:#7045a0}
+body.history-page .history-status.neutral{background:#edf0ed;color:#59665b}
+body.history-page .history-table-footer{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px 16px;margin-top:14px;color:#71847c;font-size:.76rem;line-height:1.6}
+body.history-page .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+/* Preserve the existing logout-confirmation modal after connecting shared sidebar. */
+body.history-page .logout-overlay{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(15,35,20,.58);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .25s ease,visibility .25s ease}
+body.history-page .logout-overlay.is-open{opacity:1;visibility:visible}
+body.history-page .logout-dialog{width:100%;max-width:430px;padding:32px 28px;border-radius:20px;background:#fff;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.22);transform:translateY(16px) scale(.96);transition:transform .25s ease}
+body.history-page .logout-overlay.is-open .logout-dialog{transform:translateY(0) scale(1)}
+body.history-page .logout-icon{display:flex;align-items:center;justify-content:center;width:64px;height:64px;margin:0 auto 20px;border-radius:50%;background:#e8f3e7;color:#3f7840}
+body.history-page .logout-icon svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+body.history-page .logout-dialog h2{margin:0 0 12px;color:#243629;font-size:21px;line-height:1.4}
+body.history-page .logout-dialog p{margin:0 0 25px;color:#68736b;font-size:14px;line-height:1.7}
+body.history-page .logout-actions{display:flex;flex-direction:column;gap:10px}
+body.history-page .logout-actions button{width:100%;min-height:46px;padding:12px 18px;border:0;border-radius:10px;font:inherit;font-weight:600;cursor:pointer;transition:background .2s ease,transform .2s ease}
+body.history-page .logout-confirm{background:#5e8b59;color:#fff}
+body.history-page .logout-confirm:hover{background:#497446}
+body.history-page .logout-cancel{background:#f0f3ef;color:#354438}
+body.history-page .logout-cancel:hover{background:#e3e9e1}
+body.history-page .logout-actions button:active{transform:scale(.98)}
+@media(max-width:1250px) and (min-width:901px){body.history-page .history-stats{grid-template-columns:repeat(2,minmax(0,1fr))}body.history-page .history-search{grid-template-columns:minmax(0,1fr) minmax(145px,180px)}body.history-page .history-search>.history-button{width:100%}}
+@media(prefers-reduced-motion:reduce){body.history-page .history-button,body.history-page .logout-overlay,body.history-page .logout-dialog{transition:none!important}}

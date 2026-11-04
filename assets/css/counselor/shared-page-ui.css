@@ -1,0 +1,63 @@
+/* PTC Wellness | Counselor shared page loading & logout confirmation.
+   ONLY .ptc-* UI is styled here. Existing page styles and animations stay intact. */
+.ptc-shared-ui, .ptc-shared-ui * , .ptc-shared-ui *::before, .ptc-shared-ui *::after { box-sizing: border-box; }
+.ptc-shared-ui { --ptc-ui-deep: #164630; --ptc-ui-green: #27784a; --ptc-ui-border: #dce9dc; --ptc-ui-muted: #6a7d6e; font-family: Poppins, system-ui, sans-serif; }
+.ptc-shared-ui .ptc-page-loader {
+  position: fixed; inset: 0; z-index: 20000;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 24px; gap: 9px; background: #f6faf5; color: var(--ptc-ui-deep);
+  opacity: 1; visibility: visible; pointer-events: auto;
+  transition: opacity 200ms ease, visibility 200ms ease;
+}
+.ptc-shared-ui .ptc-page-loader.ptc-loading-finished { opacity: 0; visibility: hidden; pointer-events: none; }
+.ptc-shared-ui .ptc-loading-logo {
+  display: grid; width: 72px; height: 72px; place-items: center;
+  border-radius: 22px; background: linear-gradient(145deg, #e8f5e8, #d6edd9);
+  color: #237548; box-shadow: 0 12px 30px rgba(20,71,42,.08);
+  animation: ptc-logo-pulse 1.3s ease-in-out infinite alternate;
+}
+.ptc-shared-ui .ptc-loading-logo svg { width: 40px; height: 40px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.ptc-shared-ui .ptc-loading-title { margin-top: 7px; font-size: 20px; font-weight: 800; letter-spacing: -.03em; }
+.ptc-shared-ui .ptc-loading-caption { color: var(--ptc-ui-muted); font-size: 12px; font-weight: 500; }
+.ptc-shared-ui .ptc-loading-progress { display: block; position: relative; overflow: hidden; width: 148px; height: 4px; margin-top: 12px; border-radius: 99px; background: #e2ebe1; }
+.ptc-shared-ui .ptc-loading-progress>span { display: block; position: absolute; inset: 0 auto 0 0; width: 38%; border-radius: inherit; background: #39875a; animation: ptc-progress 1.05s ease-in-out infinite alternate; }
+@keyframes ptc-logo-pulse { from { transform: scale(.96); } to { transform: scale(1.025); } }
+@keyframes ptc-progress { from { transform: translateX(-100%); } to { transform: translateX(320%); } }
+
+/* The shared logout overlay is independent of all existing page-specific modals. */
+.ptc-shared-ui .ptc-logout-overlay[hidden] { display: none !important; }
+.ptc-shared-ui .ptc-logout-overlay {
+  position: fixed; inset: 0; z-index: 21000;
+  display: flex; align-items: center; justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(16, 42, 25, .55); backdrop-filter: blur(4px);
+  opacity: 0; transition: opacity 190ms ease;
+}
+.ptc-shared-ui .ptc-logout-overlay.is-open { opacity: 1; }
+.ptc-shared-ui .ptc-logout-card {
+  width: min(100%, 430px); max-height: min(92dvh, 720px); overflow-y: auto;
+  padding: 30px 28px; border: 1px solid var(--ptc-ui-border);
+  border-radius: 22px; background: #fff; color: #243b2c;
+  text-align: center; box-shadow: 0 24px 75px rgba(10,31,18,.24);
+  transform: translateY(12px) scale(.98); transition: transform 190ms ease;
+}
+.ptc-shared-ui .ptc-logout-overlay.is-open .ptc-logout-card { transform: translateY(0) scale(1); }
+.ptc-shared-ui .ptc-logout-symbol { display: grid; place-items: center; width: 62px; height: 62px; margin: 0 auto 18px; border-radius: 18px; background: #e8f5e9; color: var(--ptc-ui-green); }
+.ptc-shared-ui .ptc-logout-symbol svg { width: 29px; height: 29px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.ptc-shared-ui .ptc-logout-card h2 { margin: 0 0 9px; font-size: 20px; font-weight: 800; letter-spacing: -.035em; line-height: 1.4; color: var(--ptc-ui-deep); }
+.ptc-shared-ui .ptc-logout-card p { margin: 0 0 24px; color: var(--ptc-ui-muted); font-size: 13px; line-height: 1.7; }
+.ptc-shared-ui .ptc-logout-actions { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+.ptc-shared-ui .ptc-logout-actions button { width: 100%; min-height: 45px; padding: 11px 12px; font: inherit; font-size: 12px; font-weight: 750; border-radius: 11px; border: 1px solid transparent; cursor: pointer; transition: background 150ms ease; }
+.ptc-shared-ui .ptc-logout-cancel { color: #2e5640; background: #f1f6f0; border-color: #dce8d9 !important; }
+.ptc-shared-ui .ptc-logout-cancel:hover { background: #e8f0e6; }
+.ptc-shared-ui .ptc-logout-confirm { background: var(--ptc-ui-green); color: white; }
+.ptc-shared-ui .ptc-logout-confirm:hover { background: #195c36; }
+.ptc-shared-ui .ptc-logout-actions button:focus-visible { outline: 3px solid #95c59a; outline-offset: 2px; }
+@media (max-width: 420px) {
+  .ptc-shared-ui .ptc-logout-card { padding: 25px 19px; border-radius: 18px; }
+  .ptc-shared-ui .ptc-logout-card h2 { font-size: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ptc-shared-ui .ptc-page-loader, .ptc-shared-ui .ptc-logout-overlay, .ptc-shared-ui .ptc-logout-card { transition: none !important; }
+  .ptc-shared-ui .ptc-loading-logo, .ptc-shared-ui .ptc-loading-progress>span { animation: none !important; }
+}
